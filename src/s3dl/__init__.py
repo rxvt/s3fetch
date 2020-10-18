@@ -21,7 +21,10 @@ from .exceptions import S3dlError
     help="Download directory. Defaults to current directory.",
 )
 @click.option("--regex", type=str, help="Filter list of available objects by regex.")
-def run(bucket, prefix, region, debug, list_only, download_dir, regex):
+@click.option(
+    "--threads", type=int, help="Number of threads to use. Defaults to core count."
+)
+def run(bucket, prefix, region, debug, list_only, download_dir, regex, threads):
     """Easily download all objects under a prefix. Specify '/' as the prefix to download all objects in a bucket.
 
     Example: s3dl my-test-bucket /my/birthdy-photos/2020-01-01
@@ -37,6 +40,7 @@ def run(bucket, prefix, region, debug, list_only, download_dir, regex):
             debug=debug,
             download_dir=download_dir,
             regex=regex,
+            threads=threads,
         )
 
         if list_only:
@@ -49,5 +53,6 @@ def run(bucket, prefix, region, debug, list_only, download_dir, regex):
     except ClientError as e:
         print(e)
     except S3dlError as e:
-        print(e)
+        if e.args:
+            print(e)
         sys.exit(1)

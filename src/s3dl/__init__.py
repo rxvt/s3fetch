@@ -47,7 +47,8 @@ def run(bucket, prefix, region, debug, list_only, download_dir, regex, threads):
             s3dl.list_only()
             sys.exit()
 
-        s3dl.download_objects()
+        _, failed_downloads = s3dl.download_objects()
+        s3dl.check_for_failed_downloads(failed_downloads)
     except KeyboardInterrupt:
         pass
     except ClientError as e:

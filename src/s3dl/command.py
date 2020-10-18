@@ -71,22 +71,38 @@ class S3dl:
         for obj in self.objects:
             print(obj)
 
-    def download_objects(self) -> None:
+    def download_objects(self) -> tuple:
         self.get_list_of_objects()
         self.filter_objects()
 
+        failed_downloads = []
+        successful_downloads = 0
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=self.threads
         ) as executor:
-            futures = [
-                executor.submit(self.download_object, self.bucket, obj)
+            futures = {
+                obj: executor.submit(self.download_object, self.bucket, obj)
                 for obj in self.objects
-            ]
-            for future in futures:
+            }
+            for key, future in futures.items():
                 try:
                     future.result()
+                    successful_downloads += 1
                 except Exception as e:
-                    raise DownloadError(e)
+                    failed_downloads.append((key, e))
+
+        return (successful_downloads, failed_downloads)
+
+    def check_for_failed_downloads(self, failed_downloads):
+        if failed_downloads:
+            print()
+            print(f"{len(failed_downloads)} objects failed to download.")
+            if self.debug:
+                for key, reason in failed_downloads:
+                    print(f"{key}: {reason}")
+            else:
+                print(f"Use --debug to see per object failure information.")
+            raise DownloadError
 
     def download_object(self, bucket: str, key: str) -> None:
         destination_filename = self.download_dir / Path(key)

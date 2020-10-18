@@ -10,6 +10,7 @@ from .exceptions import (
     RegexError,
     DirectoryDoesNotExistError,
     PermissionError as S3dlPermissionError,
+    DownloadError,
 )
 
 import concurrent.futures
@@ -42,7 +43,7 @@ class S3dl:
             self.download_dir = Path(download_dir)
             if not self.download_dir.is_dir():
                 raise DirectoryDoesNotExistError(
-                    f"The directory '{self.download_dir}'' does not exist."
+                    f"The directory '{self.download_dir}' does not exist."
                 )
 
         self.threads = threads or os.cpu_count()
@@ -55,8 +56,9 @@ class S3dl:
         if self.prefix[0] == "/":
             self.prefix = self.prefix[1:]
 
-        if self.debug:
-            print(f"Listing object in {self.bucket} with prefix {self.prefix}")
+        self.logger.debug(
+            f"Listing objects in '{self.bucket}' with prefix '{self.prefix}'"
+        )
 
         paginator = self.client.get_paginator("list_objects_v2")
 
@@ -89,13 +91,13 @@ class S3dl:
     def download_object(self, bucket: str, key: str) -> None:
         destination_filename = self.download_dir / Path(key)
 
-            try:
+        try:
             self.client.download_file(self.bucket, key, str(destination_filename))
-            except PermissionError as e:
+        except PermissionError as e:
             print(f"{key}...error")
-                raise S3dlPermissionError(
-                    f"Permission error when attempting to write object to {destination_filename}"
-                )
+            raise S3dlPermissionError(
+                f"Permission error when attempting to write object to {destination_filename}"
+            )
         else:
             print(f"{key}...done")
 

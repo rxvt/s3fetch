@@ -53,5 +53,6 @@ def run(bucket, prefix, region, debug, list_only, download_dir, regex, threads):
     except ClientError as e:
         print(e)
     except S3dlError as e:
-        print(e)
+        if e.args:
+            print(e)
         sys.exit(1)

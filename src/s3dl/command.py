@@ -12,6 +12,7 @@ from .exceptions import (
     PermissionError as S3dlPermissionError,
 )
 
+import concurrent.futures
 
 logging.basicConfig()
 
@@ -25,6 +26,7 @@ class S3dl:
         debug: bool = False,
         download_dir: Optional[str] = None,
         regex: Optional[str] = None,
+        threads: Optional[int] = None,
     ) -> None:
         self.logger = logging.getLogger("s3dl")
         self.logger.setLevel(logging.DEBUG if debug else logging.INFO)
@@ -42,6 +44,9 @@ class S3dl:
                 raise DirectoryDoesNotExistError(
                     f"The directory '{self.download_dir}'' does not exist."
                 )
+
+        self.threads = threads or os.cpu_count()
+        self.logger.debug(f"Using {self.threads} threads.")
 
         self.client = boto3.client("s3", region_name=region)
         self.objects = []
@@ -68,18 +73,31 @@ class S3dl:
         self.get_list_of_objects()
         self.filter_objects()
 
-        for obj in self.objects:
-            destination_filename = self.download_dir / Path(obj)
-            print(f"{obj}...", end="")
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=self.threads
+        ) as executor:
+            futures = [
+                executor.submit(self.download_object, self.bucket, obj)
+                for obj in self.objects
+            ]
+            for future in futures:
+                try:
+                    future.result()
+                except Exception as e:
+                    raise DownloadError(e)
+
+    def download_object(self, bucket: str, key: str) -> None:
+        destination_filename = self.download_dir / Path(key)
+
             try:
-                self.client.download_file(self.bucket, obj, str(destination_filename))
+            self.client.download_file(self.bucket, key, str(destination_filename))
             except PermissionError as e:
-                print("error.")
+            print(f"{key}...error")
                 raise S3dlPermissionError(
                     f"Permission error when attempting to write object to {destination_filename}"
                 )
-
-            print("done.")
+        else:
+            print(f"{key}...done")
 
     def filter_objects(self) -> None:
         if not self.regex:

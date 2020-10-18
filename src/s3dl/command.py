@@ -13,6 +13,9 @@ from .exceptions import (
 )
 
 
+logging.basicConfig()
+
+
 class S3dl:
     def __init__(
         self,
@@ -23,6 +26,9 @@ class S3dl:
         download_dir: Optional[str] = None,
         regex: Optional[str] = None,
     ) -> None:
+        self.logger = logging.getLogger("s3dl")
+        self.logger.setLevel(logging.DEBUG if debug else logging.INFO)
+
         self.bucket = bucket
         self.prefix = prefix
         self.debug = debug

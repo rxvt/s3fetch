@@ -12,3 +12,7 @@ class DirectoryDoesNotExistError(S3dlError):
 
 class PermissionError(S3dlError):
     pass
+
+
+class DownloadError(S3dlError):
+    pass

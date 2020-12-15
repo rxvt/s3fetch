@@ -1,13 +1,16 @@
 [tool.poetry]
 authors = ["Shane Anderson <shane@reactivate.cx>"]
 description = "Simple S3 download tool."
+license = "MIT"
 name = "s3fetch"
-version = "1.0.0"
+readme = "README.md"
+repository = "https://github.com/rxvt/s3fetch"
+version = "1.0.1"
 
 [tool.poetry.dependencies]
 boto3 = "^1.15.18"
 click = "^7.1.2"
-python = "^3.8"
+python = "^3.9"
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"

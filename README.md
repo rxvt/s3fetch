@@ -92,7 +92,7 @@ s3fetch s3://my-test-bucket/birthday-photos/2020-01-01
 
 Download objects to the `~/Downloads` directory.
 ```
-s3fetch s3://my-test-bucket/  --download-dir ~/Downloads
+s3fetch s3://my-test-bucket/ --download-dir ~/Downloads
 ```
 
 ### Download multiple objects concurrently

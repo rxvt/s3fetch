@@ -17,7 +17,7 @@ Features:
 
 ### Requirements
 
-- Python 3.9
+- Python >= 3.7
 
 S3Fetch is available on PyPi and be installed via one of the following methods Prior to running it ensure you have AWS credentials configured in one of the [standard locations](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-where).
 

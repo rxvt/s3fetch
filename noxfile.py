@@ -3,7 +3,7 @@ import nox_poetry.patch
 from nox.sessions import Session
 
 
-@nox.session(python=["3.9"])
+@nox.session(python=["3.7", "3.8", "3.9"])
 def tests(session: Session) -> None:
     session.install(".")
     session.install("pytest")

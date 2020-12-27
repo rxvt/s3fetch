@@ -88,13 +88,13 @@ class S3Fetch:
         :return: Tuple containing the S3 bucket and path prefix.
         :rtype: Tuple[str, str]
         """
-        tmp_path = s3_uri.removeprefix("s3://")
+        tmp_path = s3_uri.replace("s3://", "", 1)
         try:
             bucket, prefix = tmp_path.split(delimiter, maxsplit=1)
         except ValueError:
             bucket = tmp_path
             prefix = ""
-        self._logger.debug(f"{bucket=}, {prefix=}")
+        self._logger.debug(f"bucket={bucket}, prefix={prefix}")
         return bucket, prefix
 
     def _determine_download_dir(self, download_dir: Optional[str]) -> Path:
@@ -114,7 +114,7 @@ class S3Fetch:
                 raise DirectoryDoesNotExistError(
                     f"The directory '{download_directory}' does not exist."
                 )
-        self._logger.debug(f"{download_directory=}")
+        self._logger.debug(f"download_directory={download_directory}")
         return Path(download_directory)
 
     def _retrieve_list_of_objects(self) -> None:

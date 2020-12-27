@@ -1,0 +1,34 @@
+name: Build and Publish
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build-package:
+    needs: run-tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: [3.7]
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Setup Poetry
+        uses: Gr1N/setup-poetry@v4
+      - name: Cache Poetry Dependencies
+        uses: actions/cache@v1
+        with:
+          path: ~/.cache/pypoetry/virtualenvs
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+      - name: Poetry Install
+        run: poetry install
+      - name: Build & Publish
+        env:
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.POETRY_PYPI_TOKEN_PYPI }}
+        run: poetry publish --build

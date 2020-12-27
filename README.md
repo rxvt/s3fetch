@@ -17,7 +17,7 @@ Features:
 
 ### Requirements
 
-- Python 3.9
+- Python >= 3.7
 
 S3Fetch is available on PyPi and be installed via one of the following methods Prior to running it ensure you have AWS credentials configured in one of the [standard locations](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-where).
 
@@ -92,7 +92,7 @@ s3fetch s3://my-test-bucket/birthday-photos/2020-01-01
 
 Download objects to the `~/Downloads` directory.
 ```
-s3fetch s3://my-test-bucket/  --download-dir ~/Downloads
+s3fetch s3://my-test-bucket/ --download-dir ~/Downloads
 ```
 
 ### Download multiple objects concurrently

@@ -27,4 +27,7 @@ jobs:
       - name: Poetry Install
         run: poetry install
       - name: Run Tests
-        run: poetry run nox --sessions tests-${{ matrix.python }}
+        # pip resolver behaviour has changed, breaking nox testing
+        # https://github.com/cjolowicz/nox-poetry/issues/196
+        # run: poetry run nox --sessions tests-${{ matrix.python }}
+        run: poetry run pytest tests/

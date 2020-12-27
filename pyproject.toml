@@ -1,6 +1,7 @@
 [tool.poetry]
 authors = ["Shane Anderson <shane@reactivate.cx>"]
 description = "Simple S3 download tool."
+keywords = ["aws", "s3"]
 license = "MIT"
 name = "s3fetch"
 readme = "README.md"

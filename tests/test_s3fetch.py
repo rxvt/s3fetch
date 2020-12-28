@@ -50,31 +50,20 @@ def test_s3fetch_obj(s3fetch):
     ]
 
 
-def test_filter_objects(s3fetch):
+def test_filter_object(s3fetch):
     expected_objects = [
         "one_mytestobject_one",
         "two_mytestobject_two",
         "three_mytestobject_three",
     ]
     s3fetch._regex = r"^\w+_\w+_\w+$"
-    s3fetch._filter_objects()
-    assert s3fetch._objects == expected_objects
+    tmp_list = []
+    for key in filter(s3fetch._filter_object, expected_objects):
+        tmp_list.append(key)
+    assert tmp_list == expected_objects
 
 
-def test_filter_objects_no_matching_objects(s3fetch):
-    s3fetch._regex = r"^sdfasdfasdfsa$"
-    with pytest.raises(NoObjectsFoundError):
-        s3fetch._filter_objects()
-
-
-def test_filter_objects_empty_object_list(s3fetch):
-    s3fetch._objects = []
-    s3fetch._regex = r"^\w+_\w+_\w+$"
-    with pytest.raises(NoObjectsFoundError):
-        s3fetch._filter_objects()
-
-
-def test_filter_objects_no_regex(s3fetch):
+def test_filter_object_no_regex(s3fetch):
     expected_objects = [
         "one_mytestobject_one",
         "two_mytestobject_two",
@@ -84,8 +73,26 @@ def test_filter_objects_no_regex(s3fetch):
         "six!mytestdirectoryobject!six/",
     ]
     s3fetch._regex = None
-    s3fetch._filter_objects()
-    assert s3fetch._objects == expected_objects
+    tmp_list = []
+    for key in filter(s3fetch._filter_object, expected_objects):
+        tmp_list.append(key)
+    assert tmp_list == expected_objects
+
+
+# TODO: Fixup once moto tests are working.
+# NoObjectsFoundError now raised by_retrieve_list_of_objects
+# def test_filter_object_no_matching_objects(s3fetch):
+#     s3fetch._regex = r"^sdfasdfasdfsa$"
+#     with pytest.raises(NoObjectsFoundError):
+#         s3fetch._filter_object()
+
+# TODO: Fixup once moto tests are working.
+# NoObjectsFoundError now raised by_retrieve_list_of_objects
+# def test_filter_object_empty_object_list(s3fetch):
+#     s3fetch._objects = []
+#     s3fetch._regex = r"^\w+_\w+_\w+$"
+#     with pytest.raises(NoObjectsFoundError):
+#         s3fetch._filter_object()
 
 
 def test_check_for_failed_downloads(s3fetch, capfd):

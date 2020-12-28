@@ -132,14 +132,21 @@ class S3Fetch:
                 raise NoObjectsFoundError(
                     "No objects were found to download using the specified criteria."
                 )
-            for obj in page["Contents"]:
-                self._objects.append(obj["Key"])
+            for key in filter(
+                self._filter_object,
+                (obj["Key"] for obj in page["Contents"]),
+            ):
+                self._objects.append(key)
+
+            if not self._objects:
+                raise NoObjectsFoundError(
+                    "No objects were found to download after applying regex."
+                )
 
     def run(self) -> None:
         """Executes listing, filtering and downloading objects from the S3 bucket."""
         try:
             self._retrieve_list_of_objects()
-            self._filter_objects()
             self._remove_directories_from_object_listing()
             self._download_objects()
             self._check_for_failed_downloads()
@@ -242,14 +249,18 @@ class S3Fetch:
             self._logger.debug("Main thread has told us to exit, so exiting.")
             raise SystemExit(1)
 
-    def _filter_objects(self) -> None:
-        """Filter the list of S3 objects according to a regular expression.
+    def _filter_object(self, key: str) -> bool:
+        """Filter function for the `filter()` call used to determine if an
+        object key should be included in the list of objects to download.
 
+        :param key: S3 object key.
+        :type key: str
+        :returns: True if object key matches regex or no regex provided. False otherwise.
         :raises RegexError: Raised if the regular expression is invalid.
         """
         if not self._regex:
             self._logger.debug("No regex detected.")
-            return
+            return True
 
         try:
             rexp = re.compile(rf"{self._regex}")
@@ -258,15 +269,9 @@ class S3Fetch:
                 raise RegexError(e) from e
             raise RegexError(f"Regex error: {repr(e)}")
 
-        filtered_object_list = []
-        for obj in self._objects:
-            if rexp.search(obj):
-                self._logger.debug(f"Object {obj} matched regex, added to object list.")
-                filtered_object_list.append(obj)
-
-        if not filtered_object_list:
-            raise NoObjectsFoundError(
-                "No objects were matched using the specified regular expression."
-            )
-
-        self._objects = filtered_object_list
+        if rexp.search(key):
+            self._logger.debug(f"Object {key} matched regex, added to object list.")
+            return True
+        else:
+            self._logger.debug(f"Object {key} did not match regex, skipped.")
+            return False

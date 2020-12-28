@@ -49,15 +49,16 @@ Usage: s3fetch [OPTIONS] S3_URI
   bucket/`
 
 Options:
-  --region TEXT        Bucket region. Defaults to 'us-east-1'.
-  -d, --debug          Enable debug output.
-  --download-dir TEXT  Download directory. Defaults to current directory.
-  --regex TEXT         Filter list of available objects by regex.
-  --threads INTEGER    Number of threads to use. Defaults to core count.
-  --dry-run            Don't download objects.
-  --delimiter TEXT     Specify the directory delimiter. Defaults to '/'
-  -q, --quiet          Don't print to stdout.
-  --help               Show this message and exit.
+  --region TEXT           Bucket region. Defaults to 'us-east-1'.
+  -d, --debug             Enable debug output.
+  --download-dir TEXT     Download directory. Defaults to current directory.
+  --regex TEXT            Filter list of available objects by regex.
+  --threads INTEGER       Number of threads to use. Defaults to core count.
+  --dry-run, --list-only  List objects only, do not download.
+  --delimiter TEXT        Specify the "directory" delimiter. Defaults to '/'.
+  -q, --quiet             Don't print to stdout.
+  --version               Print out version information.
+  --help                  Show this message and exit.
 ```
 
 ## Examples:

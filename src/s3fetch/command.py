@@ -264,10 +264,11 @@ class S3Fetch:
 
         try:
             rexp = re.compile(rf"{self._regex}")
-        except Exception as e:
+        except re.error as e:
+            msg = f"Regex error: {repr(e)}"
             if self._debug:
-                raise RegexError(e) from e
-            raise RegexError(f"Regex error: {repr(e)}")
+                raise RegexError(msg) from e
+            raise RegexError(msg)
 
         if rexp.search(key):
             self._logger.debug(f"Object {key} matched regex, added to object list.")

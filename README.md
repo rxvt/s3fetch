@@ -4,7 +4,11 @@ Easy to use, multi-threaded S3 download tool.
 
 Source: [https://github.com/rxvt/s3fetch](https://github.com/rxvt/s3fetch)
 
-Features:
+![Build and Publish](https://github.com/rxvt/s3fetch/workflows/Build%20and%20Publish/badge.svg?branch=main)
+![Test](https://github.com/rxvt/s3fetch/workflows/Test/badge.svg?branch=development)
+[![PyPI version](https://badge.fury.io/py/s3fetch.svg)](https://badge.fury.io/py/s3fetch)
+
+## Features
 
 - Simple to use.
 - Multi-threaded, allowing you to download multiple objects concurrently (defaults to amount of cores available).

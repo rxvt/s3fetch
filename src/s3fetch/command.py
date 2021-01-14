@@ -177,7 +177,7 @@ class S3Fetch:
                 except KeyboardInterrupt:
                     if not self._quiet:
                         print("\nThreads are exiting...")
-                    executor.shutdown(wait=False, cancel_futures=True)
+                    executor.shutdown(wait=False)
                     self._thread_exit.set()
                     raise
                 except Exception as e:

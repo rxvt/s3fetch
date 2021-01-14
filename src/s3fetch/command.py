@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 import boto3
+import botocore
+from botocore.endpoint import MAX_POOL_CONNECTIONS as botocore_max_pool_connections
 from botocore.exceptions import NoCredentialsError
 
 from .exceptions import DirectoryDoesNotExistError
@@ -71,7 +73,15 @@ class S3Fetch:
         self._threads = threads or os.cpu_count()
         self._logger.debug(f"Using {self._threads} threads.")
 
-        self.client = boto3.client("s3", region_name=region)
+        # https://stackoverflow.com/questions/53765366/urllib3-connectionpool-connection-pool-is-full-discarding-connection
+        # https://github.com/boto/botocore/issues/619#issuecomment-461859685
+        # max_pool_connections here is passed to the max_size param of urllib3.HTTPConnectionPool()
+        connection_pool_connections = max(botocore_max_pool_connections, self._threads)
+        client_config = botocore.config.Config(
+            max_pool_connections=connection_pool_connections,
+        )
+
+        self.client = boto3.client("s3", region_name=region, config=client_config)
         self._objects = []
         self._failed_downloads = []
         self._successful_downloads = 0

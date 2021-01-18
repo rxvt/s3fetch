@@ -1,6 +1,7 @@
 import concurrent.futures
 import logging
 import os
+import queue
 import re
 import threading
 from pathlib import Path
@@ -8,12 +9,11 @@ from typing import Optional, Tuple
 
 import boto3
 import botocore
-from botocore.endpoint import MAX_POOL_CONNECTIONS as botocore_max_pool_connections
+from botocore.endpoint import MAX_POOL_CONNECTIONS
 from botocore.exceptions import NoCredentialsError
 
 from .exceptions import DirectoryDoesNotExistError
 from .exceptions import NoCredentialsError as S3FetchNoCredentialsError
-from .exceptions import NoObjectsFoundError
 from .exceptions import PermissionError as S3FetchPermissionError
 from .exceptions import RegexError
 
@@ -76,17 +76,17 @@ class S3Fetch:
         # https://stackoverflow.com/questions/53765366/urllib3-connectionpool-connection-pool-is-full-discarding-connection
         # https://github.com/boto/botocore/issues/619#issuecomment-461859685
         # max_pool_connections here is passed to the max_size param of urllib3.HTTPConnectionPool()
-        connection_pool_connections = max(botocore_max_pool_connections, self._threads)
+        connection_pool_connections = max(MAX_POOL_CONNECTIONS, self._threads)
         client_config = botocore.config.Config(
             max_pool_connections=connection_pool_connections,
         )
 
         self.client = boto3.client("s3", region_name=region, config=client_config)
-        self._objects = []
+        self._object_queue = queue.Queue()
         self._failed_downloads = []
         self._successful_downloads = 0
 
-        self._thread_exit = threading.Event()
+        self._keyboard_interrupt_exit = threading.Event()
 
     def _parse_and_split_s3_uri(self, s3_uri: str, delimiter: str) -> Tuple[str, str]:
         """Parse and split the S3 URI into bucket and path prefix.
@@ -128,10 +128,7 @@ class S3Fetch:
         return Path(download_directory)
 
     def _retrieve_list_of_objects(self) -> None:
-        """Retrieve a list of objects in the S3 bucket under the specified path prefix.
-
-        :raises NoObjectsFoundError: Raised when no objects are found under the specified prefix.
-        """
+        """Retrieve a list of objects in the S3 bucket under the specified path prefix."""
         self._logger.debug(
             f"Listing objects in '{self._bucket}' with prefix '{self._prefix}'"
         )
@@ -139,47 +136,46 @@ class S3Fetch:
         paginator = self.client.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=self._bucket, Prefix=self._prefix):
             if "Contents" not in page:
-                raise NoObjectsFoundError(
-                    "No objects were found to download using the specified criteria."
-                )
+                if not self._quiet:
+                    print("No objects found under prefix.")
+                break
+
+            if self._keyboard_interrupt_exit.is_set():
+                raise KeyboardInterrupt
+
             for key in filter(
                 self._filter_object,
                 (obj["Key"] for obj in page["Contents"]),
             ):
-                self._objects.append(key)
+                self._object_queue.put_nowait(key)
 
-            if not self._objects:
-                raise NoObjectsFoundError(
-                    "No objects were found to download after applying regex."
-                )
+        # Send sentinel value indicating pagination complete.
+        self._object_queue.put_nowait(None)
 
     def run(self) -> None:
         """Executes listing, filtering and downloading objects from the S3 bucket."""
         try:
-            self._retrieve_list_of_objects()
-            self._remove_directories_from_object_listing()
+            threading.Thread(target=self._retrieve_list_of_objects).start()
             self._download_objects()
             self._check_for_failed_downloads()
         except NoCredentialsError as e:
             raise S3FetchNoCredentialsError(e) from e
 
-    def _remove_directories_from_object_listing(self) -> None:
-        """Remove "directory" objects from the object listing as they are not required."""
-        self._logger.debug("Removing dangling directory objects from object list.")
-        self._objects = [
-            obj
-            for obj in filter(lambda x: not x.endswith(self._delimiter), self._objects)
-        ]
-
     def _download_objects(self) -> None:
         """Download objects from the specified S3 bucket and path prefix."""
+        if not self._quiet:
+            print("Starting downloads...")
+
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=self._threads
         ) as executor:
-            futures = {
-                obj: executor.submit(self._download_object, obj)
-                for obj in self._objects
-            }
+            futures = {}
+            while True:
+                item = self._object_queue.get(block=True)
+                if item is None:  # Check for sentinel value
+                    break
+                futures[item] = executor.submit(self._download_object, item)
+
             for key, future in futures.items():
                 try:
                     future.result()
@@ -188,7 +184,7 @@ class S3Fetch:
                     if not self._quiet:
                         print("\nThreads are exiting...")
                     executor.shutdown(wait=False)
-                    self._thread_exit.set()
+                    self._keyboard_interrupt_exit.set()
                     raise
                 except Exception as e:
                     self._failed_downloads.append((key, e))
@@ -198,11 +194,8 @@ class S3Fetch:
         if self._failed_downloads and not self._quiet:
             print()
             print(f"{len(self._failed_downloads)} objects failed to download.")
-            if self._debug:
-                for key, reason in self._failed_downloads:
-                    print(f"{key}: {reason}")
-            else:
-                print(f"Use --debug to see per object failure information.")
+            for key, reason in self._failed_downloads:
+                print(f"{key}: {reason}")
 
     def _download_object(self, key: str) -> None:
         """Download S3 object from the specified bucket.
@@ -227,7 +220,7 @@ class S3Fetch:
 
         destination_filename = destination_directory / Path(tmp_dest_filename)
 
-        if self._thread_exit.is_set():
+        if self._keyboard_interrupt_exit.is_set():
             raise KeyboardInterrupt
 
         self._logger.debug(f"Downloading s3://{self._bucket}{self._delimiter}{key}")
@@ -246,7 +239,7 @@ class S3Fetch:
                 f"Permission error when attempting to write object to {destination_filename}"
             ) from e
         else:
-            if not self._thread_exit.is_set():
+            if not self._keyboard_interrupt_exit.is_set():
                 if not self._quiet:
                     print(f"{key}...done")
 
@@ -255,7 +248,7 @@ class S3Fetch:
 
         :raises SystemExit: Raised if KeyboardInterrupt is raised in the main thread.
         """
-        if self._thread_exit.is_set():
+        if self._keyboard_interrupt_exit.is_set():
             self._logger.debug("Main thread has told us to exit, so exiting.")
             raise SystemExit(1)
 
@@ -268,6 +261,10 @@ class S3Fetch:
         :returns: True if object key matches regex or no regex provided. False otherwise.
         :raises RegexError: Raised if the regular expression is invalid.
         """
+        # Discard key if it's a 'directory'
+        if key.endswith(self._delimiter):
+            return False
+
         if not self._regex:
             self._logger.debug("No regex detected.")
             return True

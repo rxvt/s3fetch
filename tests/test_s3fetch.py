@@ -74,9 +74,9 @@ def test_filter_object_no_regex(s3fetch):
     ]
     s3fetch._regex = None
     tmp_list = []
-    for key in filter(s3fetch._filter_object, expected_objects):
+    for key in filter(s3fetch._filter_object, (obj for obj in expected_objects)):
         tmp_list.append(key)
-    assert tmp_list == expected_objects
+    assert tmp_list == expected_objects[0:-1]
 
 
 # TODO: Fixup once moto tests are working.
@@ -106,7 +106,6 @@ def test_check_for_failed_downloads(s3fetch, capfd):
     s3fetch._check_for_failed_downloads()
     out, _ = capfd.readouterr()
     assert "objects failed to download" in out
-    assert "Use --debug to see per object" in out
 
     s3fetch._debug = True
     s3fetch._check_for_failed_downloads()
@@ -152,14 +151,14 @@ def test_determine_download_dir_dir_specified_and_raises(s3fetch, mocker):
 
 def test_remove_directories(s3fetch):
     expected_objects = [
-        "one_mytestobject_one",
-        "two_mytestobject_two",
-        "three_mytestobject_three",
-        "four*mytestobject*four",
         "five)mytestobject_five",
+        "six!mytestdirectoryobject!six/",
     ]
-    s3fetch._remove_directories_from_object_listing()
-    assert s3fetch._objects == expected_objects
+    s3fetch._regex = None
+    tmp_list = []
+    for key in filter(s3fetch._filter_object, (obj for obj in expected_objects)):
+        tmp_list.append(key)
+    assert tmp_list == ["five)mytestobject_five"]
 
 
 def test_parse_and_split_s3_uri_full_path(s3fetch):

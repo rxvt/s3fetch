@@ -130,9 +130,9 @@ class S3Fetch:
     def _retrieve_list_of_objects(self) -> None:
         """Retrieve a list of objects in the S3 bucket under the specified path prefix."""
         if not self._quiet:
-            print(
-                f"Listing objects in bucket '{self._bucket}' with prefix '{self._prefix}'..."
-            )
+            prefix = f"'{self._prefix}'" if self._prefix else "no prefix"
+            print(f"Listing objects in bucket '{self._bucket}' with prefix {prefix}...")
+
         paginator = self.client.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=self._bucket, Prefix=self._prefix):
             if "Contents" not in page:
@@ -240,7 +240,7 @@ class S3Fetch:
         tmp_dest_directory, tmp_dest_filename = self._rollup_prefix(key)
 
         if tmp_dest_directory:
-        destination_directory = self._download_dir / Path(tmp_dest_directory)
+            destination_directory = self._download_dir / Path(tmp_dest_directory)
         else:
             destination_directory = self._download_dir
 

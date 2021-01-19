@@ -197,6 +197,38 @@ class S3Fetch:
             for key, reason in self._failed_downloads:
                 print(f"{key}: {reason}")
 
+    def _rollup_prefix(self, key: str) -> Tuple[Optional[str], str]:
+        # First roll up everything under the prefix to the right most delimiter, leaving us with the object key
+        # after the rolled up prefix.
+        # Example for prefix of '/example/obj'
+        # /example/objects/obj1
+        # /example/objects/obj2
+        # Result: objects/obj1 & objects/obj2
+        # Determine rollup prefix
+        if self._prefix:
+            # Get prefix up to last delimiter
+            try:
+                rollup_prefix, _ = self._prefix.rsplit(self._delimiter, maxsplit=1)
+            except ValueError:
+                rollup_prefix = None
+        else:
+            rollup_prefix = None
+
+        # Remove prefix from key
+        if rollup_prefix:
+            _, tmp_key = key.rsplit(rollup_prefix + self._delimiter, maxsplit=1)
+        else:
+            tmp_key = key
+
+        # Split object key into directory and filename
+        try:
+            directory, filename = tmp_key.rsplit(self._delimiter, maxsplit=1)
+        except ValueError:
+            directory = None
+            filename = tmp_key
+
+        return directory, filename
+
     def _download_object(self, key: str) -> None:
         """Download S3 object from the specified bucket.
 
@@ -205,15 +237,12 @@ class S3Fetch:
         :raises KeyboardInterrupt: Raised hit user cancels operation with CTRL-C.
         :raises S3FetchPermissionError: Raised if a permission error is encountered when writing object to disk.
         """
-        try:
-            tmp_dest_directory, tmp_dest_filename = key.rsplit(
-                self._delimiter, maxsplit=1
-            )
-        except ValueError:
-            tmp_dest_directory = ""
-            tmp_dest_filename = key
+        tmp_dest_directory, tmp_dest_filename = self._rollup_prefix(key)
 
+        if tmp_dest_directory:
         destination_directory = self._download_dir / Path(tmp_dest_directory)
+        else:
+            destination_directory = self._download_dir
 
         if not destination_directory.is_dir():
             destination_directory.mkdir(parents=True)

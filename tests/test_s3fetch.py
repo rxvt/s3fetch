@@ -187,3 +187,20 @@ def test_parse_and_split_s3_uri_no_prefix(s3fetch):
     )
     assert bucket == "testbucket"
     assert prefix == ""
+
+
+def test_rollup_prefix(s3fetch):
+    # (prefix, object_key, expected directory, expected filename)
+    prefix_and_keys = [
+        ("", "object1", None, "object1"),
+        ("storage", "storage/object1", "storage", "object1"),
+        ("sto", "storage/object1", "storage", "object1"),
+        ("storage/obj", "storage/object1", None, "object1"),
+        ("test/an", "test/another_folder/console", "another_folder", "console"),
+        ("", "test/another_folder/console", "test/another_folder", "console"),
+    ]
+
+    for prefix, key, directory, filename in prefix_and_keys:
+        s3fetch._prefix = prefix
+        tmp_directory, tmp_filename = s3fetch._rollup_prefix(key)
+        assert (directory, filename) == (tmp_directory, tmp_filename)

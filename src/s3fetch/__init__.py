@@ -24,16 +24,23 @@ __version__ = pkg_resources.get_distribution("s3fetch").version
     type=str,
     help="Download directory. Defaults to current directory.",
 )
-@click.option("--regex", type=str, help="Filter list of available objects by regex.")
 @click.option(
-    "--threads", type=int, help="Number of threads to use. Defaults to core count."
+    "-r", "--regex", type=str, help="Filter list of available objects by regex."
 )
-@click.option("--dry-run", is_flag=True, help="Don't download objects.")
+@click.option(
+    "-t",
+    "--threads",
+    type=int,
+    help="Number of threads to use. Defaults to core count.",
+)
+@click.option(
+    "--dry-run", "--list-only", is_flag=True, help="List objects only, do not download."
+)
 @click.option(
     "--delimiter",
     type=str,
     default="/",
-    help="Specify the \"directory\" delimiter. Defaults to '/'",
+    help="Specify the \"directory\" delimiter. Defaults to '/'.",
 )
 @click.option("-q", "--quiet", is_flag=True, help="Don't print to stdout.")
 @click.option("--version", is_flag=True, help="Print out version information.")

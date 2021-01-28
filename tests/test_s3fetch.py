@@ -50,31 +50,20 @@ def test_s3fetch_obj(s3fetch):
     ]
 
 
-def test_filter_objects(s3fetch):
+def test_filter_object(s3fetch):
     expected_objects = [
         "one_mytestobject_one",
         "two_mytestobject_two",
         "three_mytestobject_three",
     ]
     s3fetch._regex = r"^\w+_\w+_\w+$"
-    s3fetch._filter_objects()
-    assert s3fetch._objects == expected_objects
+    tmp_list = []
+    for key in filter(s3fetch._filter_object, expected_objects):
+        tmp_list.append(key)
+    assert tmp_list == expected_objects
 
 
-def test_filter_objects_no_matching_objects(s3fetch):
-    s3fetch._regex = r"^sdfasdfasdfsa$"
-    with pytest.raises(NoObjectsFoundError):
-        s3fetch._filter_objects()
-
-
-def test_filter_objects_empty_object_list(s3fetch):
-    s3fetch._objects = []
-    s3fetch._regex = r"^\w+_\w+_\w+$"
-    with pytest.raises(NoObjectsFoundError):
-        s3fetch._filter_objects()
-
-
-def test_filter_objects_no_regex(s3fetch):
+def test_filter_object_no_regex(s3fetch):
     expected_objects = [
         "one_mytestobject_one",
         "two_mytestobject_two",
@@ -84,8 +73,26 @@ def test_filter_objects_no_regex(s3fetch):
         "six!mytestdirectoryobject!six/",
     ]
     s3fetch._regex = None
-    s3fetch._filter_objects()
-    assert s3fetch._objects == expected_objects
+    tmp_list = []
+    for key in filter(s3fetch._filter_object, (obj for obj in expected_objects)):
+        tmp_list.append(key)
+    assert tmp_list == expected_objects[0:-1]
+
+
+# TODO: Fixup once moto tests are working.
+# NoObjectsFoundError now raised by_retrieve_list_of_objects
+# def test_filter_object_no_matching_objects(s3fetch):
+#     s3fetch._regex = r"^sdfasdfasdfsa$"
+#     with pytest.raises(NoObjectsFoundError):
+#         s3fetch._filter_object()
+
+# TODO: Fixup once moto tests are working.
+# NoObjectsFoundError now raised by_retrieve_list_of_objects
+# def test_filter_object_empty_object_list(s3fetch):
+#     s3fetch._objects = []
+#     s3fetch._regex = r"^\w+_\w+_\w+$"
+#     with pytest.raises(NoObjectsFoundError):
+#         s3fetch._filter_object()
 
 
 def test_check_for_failed_downloads(s3fetch, capfd):
@@ -99,7 +106,6 @@ def test_check_for_failed_downloads(s3fetch, capfd):
     s3fetch._check_for_failed_downloads()
     out, _ = capfd.readouterr()
     assert "objects failed to download" in out
-    assert "Use --debug to see per object" in out
 
     s3fetch._debug = True
     s3fetch._check_for_failed_downloads()
@@ -145,14 +151,14 @@ def test_determine_download_dir_dir_specified_and_raises(s3fetch, mocker):
 
 def test_remove_directories(s3fetch):
     expected_objects = [
-        "one_mytestobject_one",
-        "two_mytestobject_two",
-        "three_mytestobject_three",
-        "four*mytestobject*four",
         "five)mytestobject_five",
+        "six!mytestdirectoryobject!six/",
     ]
-    s3fetch._remove_directories_from_object_listing()
-    assert s3fetch._objects == expected_objects
+    s3fetch._regex = None
+    tmp_list = []
+    for key in filter(s3fetch._filter_object, (obj for obj in expected_objects)):
+        tmp_list.append(key)
+    assert tmp_list == ["five)mytestobject_five"]
 
 
 def test_parse_and_split_s3_uri_full_path(s3fetch):
@@ -181,3 +187,20 @@ def test_parse_and_split_s3_uri_no_prefix(s3fetch):
     )
     assert bucket == "testbucket"
     assert prefix == ""
+
+
+def test_rollup_prefix(s3fetch):
+    # (prefix, object_key, expected directory, expected filename)
+    prefix_and_keys = [
+        ("", "object1", None, "object1"),
+        ("storage", "storage/object1", "storage", "object1"),
+        ("sto", "storage/object1", "storage", "object1"),
+        ("storage/obj", "storage/object1", None, "object1"),
+        ("test/an", "test/another_folder/console", "another_folder", "console"),
+        ("", "test/another_folder/console", "test/another_folder", "console"),
+    ]
+
+    for prefix, key, directory, filename in prefix_and_keys:
+        s3fetch._prefix = prefix
+        tmp_directory, tmp_filename = s3fetch._rollup_prefix(key)
+        assert (directory, filename) == (tmp_directory, tmp_filename)

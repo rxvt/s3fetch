@@ -1,17 +1,19 @@
 import concurrent.futures
 import logging
 import os
+import queue
 import re
 import threading
 from pathlib import Path
 from typing import Optional, Tuple
 
 import boto3
+import botocore
+from botocore.endpoint import MAX_POOL_CONNECTIONS
 from botocore.exceptions import NoCredentialsError
 
 from .exceptions import DirectoryDoesNotExistError
 from .exceptions import NoCredentialsError as S3FetchNoCredentialsError
-from .exceptions import NoObjectsFoundError
 from .exceptions import PermissionError as S3FetchPermissionError
 from .exceptions import RegexError
 
@@ -71,12 +73,20 @@ class S3Fetch:
         self._threads = threads or os.cpu_count()
         self._logger.debug(f"Using {self._threads} threads.")
 
-        self.client = boto3.client("s3", region_name=region)
-        self._objects = []
+        # https://stackoverflow.com/questions/53765366/urllib3-connectionpool-connection-pool-is-full-discarding-connection
+        # https://github.com/boto/botocore/issues/619#issuecomment-461859685
+        # max_pool_connections here is passed to the max_size param of urllib3.HTTPConnectionPool()
+        connection_pool_connections = max(MAX_POOL_CONNECTIONS, self._threads)
+        client_config = botocore.config.Config(
+            max_pool_connections=connection_pool_connections,
+        )
+
+        self.client = boto3.client("s3", region_name=region, config=client_config)
+        self._object_queue = queue.Queue()
         self._failed_downloads = []
         self._successful_downloads = 0
 
-        self._thread_exit = threading.Event()
+        self._keyboard_interrupt_exit = threading.Event()
 
     def _parse_and_split_s3_uri(self, s3_uri: str, delimiter: str) -> Tuple[str, str]:
         """Parse and split the S3 URI into bucket and path prefix.
@@ -118,51 +128,54 @@ class S3Fetch:
         return Path(download_directory)
 
     def _retrieve_list_of_objects(self) -> None:
-        """Retrieve a list of objects in the S3 bucket under the specified path prefix.
-
-        :raises NoObjectsFoundError: Raised when no objects are found under the specified prefix.
-        """
-        self._logger.debug(
-            f"Listing objects in '{self._bucket}' with prefix '{self._prefix}'"
-        )
+        """Retrieve a list of objects in the S3 bucket under the specified path prefix."""
+        if not self._quiet:
+            prefix = f"'{self._prefix}'" if self._prefix else "no prefix"
+            print(f"Listing objects in bucket '{self._bucket}' with prefix {prefix}...")
 
         paginator = self.client.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=self._bucket, Prefix=self._prefix):
             if "Contents" not in page:
-                raise NoObjectsFoundError(
-                    "No objects were found to download using the specified criteria."
-                )
-            for obj in page["Contents"]:
-                self._objects.append(obj["Key"])
+                if not self._quiet:
+                    print("No objects found under prefix.")
+                break
+
+            if self._keyboard_interrupt_exit.is_set():
+                raise KeyboardInterrupt
+
+            for key in filter(
+                self._filter_object,
+                (obj["Key"] for obj in page["Contents"]),
+            ):
+                self._object_queue.put_nowait(key)
+
+        # Send sentinel value indicating pagination complete.
+        self._object_queue.put_nowait(None)
 
     def run(self) -> None:
         """Executes listing, filtering and downloading objects from the S3 bucket."""
         try:
-            self._retrieve_list_of_objects()
-            self._filter_objects()
-            self._remove_directories_from_object_listing()
+            threading.Thread(target=self._retrieve_list_of_objects).start()
             self._download_objects()
             self._check_for_failed_downloads()
         except NoCredentialsError as e:
             raise S3FetchNoCredentialsError(e) from e
 
-    def _remove_directories_from_object_listing(self) -> None:
-        """Remove "directory" objects from the object listing as they are not required."""
-        self._logger.debug("Removing dangling directory objects from object list.")
-        self._objects = [
-            obj
-            for obj in filter(lambda x: not x.endswith(self._delimiter), self._objects)
-        ]
-
     def _download_objects(self) -> None:
         """Download objects from the specified S3 bucket and path prefix."""
+        if not self._quiet:
+            print("Starting downloads...")
+
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=self._threads
         ) as executor:
-            futures = {
-                obj: executor.submit(self._download_object, obj)
-                for obj in self._objects
-            }
+            futures = {}
+            while True:
+                item = self._object_queue.get(block=True)
+                if item is None:  # Check for sentinel value
+                    break
+                futures[item] = executor.submit(self._download_object, item)
+
             for key, future in futures.items():
                 try:
                     future.result()
@@ -170,8 +183,8 @@ class S3Fetch:
                 except KeyboardInterrupt:
                     if not self._quiet:
                         print("\nThreads are exiting...")
-                    executor.shutdown(wait=False, cancel_futures=True)
-                    self._thread_exit.set()
+                    executor.shutdown(wait=False)
+                    self._keyboard_interrupt_exit.set()
                     raise
                 except Exception as e:
                     self._failed_downloads.append((key, e))
@@ -181,11 +194,40 @@ class S3Fetch:
         if self._failed_downloads and not self._quiet:
             print()
             print(f"{len(self._failed_downloads)} objects failed to download.")
-            if self._debug:
-                for key, reason in self._failed_downloads:
-                    print(f"{key}: {reason}")
-            else:
-                print(f"Use --debug to see per object failure information.")
+            for key, reason in self._failed_downloads:
+                print(f"{key}: {reason}")
+
+    def _rollup_prefix(self, key: str) -> Tuple[Optional[str], str]:
+        # First roll up everything under the prefix to the right most delimiter, leaving us with the object key
+        # after the rolled up prefix.
+        # Example for prefix of '/example/obj'
+        # /example/objects/obj1
+        # /example/objects/obj2
+        # Result: objects/obj1 & objects/obj2
+        # Determine rollup prefix
+        if self._prefix:
+            # Get prefix up to last delimiter
+            try:
+                rollup_prefix, _ = self._prefix.rsplit(self._delimiter, maxsplit=1)
+            except ValueError:
+                rollup_prefix = None
+        else:
+            rollup_prefix = None
+
+        # Remove prefix from key
+        if rollup_prefix:
+            _, tmp_key = key.rsplit(rollup_prefix + self._delimiter, maxsplit=1)
+        else:
+            tmp_key = key
+
+        # Split object key into directory and filename
+        try:
+            directory, filename = tmp_key.rsplit(self._delimiter, maxsplit=1)
+        except ValueError:
+            directory = None
+            filename = tmp_key
+
+        return directory, filename
 
     def _download_object(self, key: str) -> None:
         """Download S3 object from the specified bucket.
@@ -195,22 +237,19 @@ class S3Fetch:
         :raises KeyboardInterrupt: Raised hit user cancels operation with CTRL-C.
         :raises S3FetchPermissionError: Raised if a permission error is encountered when writing object to disk.
         """
-        try:
-            tmp_dest_directory, tmp_dest_filename = key.rsplit(
-                self._delimiter, maxsplit=1
-            )
-        except ValueError:
-            tmp_dest_directory = ""
-            tmp_dest_filename = key
+        tmp_dest_directory, tmp_dest_filename = self._rollup_prefix(key)
 
-        destination_directory = self._download_dir / Path(tmp_dest_directory)
+        if tmp_dest_directory:
+            destination_directory = self._download_dir / Path(tmp_dest_directory)
+        else:
+            destination_directory = self._download_dir
 
         if not destination_directory.is_dir():
             destination_directory.mkdir(parents=True)
 
         destination_filename = destination_directory / Path(tmp_dest_filename)
 
-        if self._thread_exit.is_set():
+        if self._keyboard_interrupt_exit.is_set():
             raise KeyboardInterrupt
 
         self._logger.debug(f"Downloading s3://{self._bucket}{self._delimiter}{key}")
@@ -229,7 +268,7 @@ class S3Fetch:
                 f"Permission error when attempting to write object to {destination_filename}"
             ) from e
         else:
-            if not self._thread_exit.is_set():
+            if not self._keyboard_interrupt_exit.is_set():
                 if not self._quiet:
                     print(f"{key}...done")
 
@@ -238,35 +277,38 @@ class S3Fetch:
 
         :raises SystemExit: Raised if KeyboardInterrupt is raised in the main thread.
         """
-        if self._thread_exit.is_set():
+        if self._keyboard_interrupt_exit.is_set():
             self._logger.debug("Main thread has told us to exit, so exiting.")
             raise SystemExit(1)
 
-    def _filter_objects(self) -> None:
-        """Filter the list of S3 objects according to a regular expression.
+    def _filter_object(self, key: str) -> bool:
+        """Filter function for the `filter()` call used to determine if an
+        object key should be included in the list of objects to download.
 
+        :param key: S3 object key.
+        :type key: str
+        :returns: True if object key matches regex or no regex provided. False otherwise.
         :raises RegexError: Raised if the regular expression is invalid.
         """
+        # Discard key if it's a 'directory'
+        if key.endswith(self._delimiter):
+            return False
+
         if not self._regex:
             self._logger.debug("No regex detected.")
-            return
+            return True
 
         try:
             rexp = re.compile(rf"{self._regex}")
-        except Exception as e:
+        except re.error as e:
+            msg = f"Regex error: {repr(e)}"
             if self._debug:
-                raise RegexError(e) from e
-            raise RegexError(f"Regex error: {repr(e)}")
+                raise RegexError(msg) from e
+            raise RegexError(msg)
 
-        filtered_object_list = []
-        for obj in self._objects:
-            if rexp.search(obj):
-                self._logger.debug(f"Object {obj} matched regex, added to object list.")
-                filtered_object_list.append(obj)
-
-        if not filtered_object_list:
-            raise NoObjectsFoundError(
-                "No objects were matched using the specified regular expression."
-            )
-
-        self._objects = filtered_object_list
+        if rexp.search(key):
+            self._logger.debug(f"Object {key} matched regex, added to object list.")
+            return True
+        else:
+            self._logger.debug(f"Object {key} did not match regex, skipped.")
+            return False

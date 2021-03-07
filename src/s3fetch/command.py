@@ -245,7 +245,10 @@ class S3Fetch:
             destination_directory = self._download_dir
 
         if not destination_directory.is_dir():
-            destination_directory.mkdir(parents=True)
+            try:
+                destination_directory.mkdir(parents=True)
+            except FileExistsError:
+                pass
 
         destination_filename = destination_directory / Path(tmp_dest_filename)
 

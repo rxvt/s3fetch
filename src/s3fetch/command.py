@@ -87,6 +87,7 @@ class S3Fetch:
         self._successful_downloads = 0
 
         self._keyboard_interrupt_exit = threading.Event()
+        self._print_lock = threading.Lock()
 
     def _parse_and_split_s3_uri(self, s3_uri: str, delimiter: str) -> Tuple[str, str]:
         """Parse and split the S3 URI into bucket and path prefix.
@@ -266,14 +267,14 @@ class S3Fetch:
                 )
         except PermissionError as e:
             if not self._quiet:
-                print(f"{key}...error")
+                self._tprint(f"{key}...error")
             raise S3FetchPermissionError(
                 f"Permission error when attempting to write object to {destination_filename}"
             ) from e
         else:
             if not self._keyboard_interrupt_exit.is_set():
                 if not self._quiet:
-                    print(f"{key}...done")
+                    self._tprint(f"{key}...done")
 
     def _download_callback(self, *args, **kwargs):
         """boto3 callback, called whenever boto3 finishes downloading a chunk of an S3 object.
@@ -315,3 +316,13 @@ class S3Fetch:
         else:
             self._logger.debug(f"Object {key} did not match regex, skipped.")
             return False
+
+    def _tprint(self, msg: str) -> None:
+        """Thread safe printing.
+
+        :param msg: Text to print to the screen.
+        :type msg: str
+        """
+        self._print_lock.acquire(timeout=1)
+        print(msg)
+        self._print_lock.release()

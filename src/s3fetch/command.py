@@ -70,7 +70,7 @@ class S3Fetch:
 
         self._download_dir = self._determine_download_dir(download_dir)
 
-        self._threads = threads or os.cpu_count()
+        self._threads = threads or len(os.sched_getaffinity(0))
         self._logger.debug(f"Using {self._threads} threads.")
 
         # https://stackoverflow.com/questions/53765366/urllib3-connectionpool-connection-pool-is-full-discarding-connection

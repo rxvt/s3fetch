@@ -70,14 +70,23 @@ class S3Fetch:
 
         self._download_dir = self._determine_download_dir(download_dir)
 
-        self._threads = threads or len(os.sched_getaffinity(0))
+        # os.sched_getaffinity() is not available on MacOS so default back to
+        # os.cpu_count()
+        if threads:
+            self._threads = threads
+        else:
+            try:
+                self._threads = len(os.sched_getaffinity(0))  # type: ignore
+            except AttributeError:
+                self._threads = os.cpu_count()
+
         self._logger.debug(f"Using {self._threads} threads.")
 
         # https://stackoverflow.com/questions/53765366/urllib3-connectionpool-connection-pool-is-full-discarding-connection
         # https://github.com/boto/botocore/issues/619#issuecomment-461859685
         # max_pool_connections here is passed to the max_size param of urllib3.HTTPConnectionPool()
-        connection_pool_connections = max(MAX_POOL_CONNECTIONS, self._threads)
-        client_config = botocore.config.Config(
+        connection_pool_connections = max(MAX_POOL_CONNECTIONS, self._threads)  # type: ignore
+        client_config = botocore.config.Config(  # type: ignore
             max_pool_connections=connection_pool_connections,
         )
 

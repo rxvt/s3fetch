@@ -131,8 +131,8 @@ class S3Fetch:
     def _retrieve_list_of_objects(self) -> None:
         """Retrieve a list of objects in the S3 bucket under the specified path prefix."""
         if not self._quiet:
-            prefix = f"'{self._prefix}'" if self._prefix else "no prefix"
-            print(f"Listing objects in bucket '{self._bucket}' with prefix {prefix}...")
+            prefix = f"'{self._prefix}'" if self._prefix else "None"
+            print(f"Listing objects in bucket '{self._bucket}' with prefix: {prefix}")
 
         paginator = self.client.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=self._bucket, Prefix=self._prefix):

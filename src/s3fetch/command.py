@@ -4,6 +4,7 @@ import os
 import queue
 import re
 import threading
+from logging import LogRecord
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -18,6 +19,8 @@ from .exceptions import PermissionError as S3FetchPermissionError
 from .exceptions import RegexError
 
 logging.basicConfig()
+
+MAX_S3TRANSFER_CONCURRENCY = 10
 
 
 class S3Fetch:
@@ -85,7 +88,10 @@ class S3Fetch:
         # https://stackoverflow.com/questions/53765366/urllib3-connectionpool-connection-pool-is-full-discarding-connection
         # https://github.com/boto/botocore/issues/619#issuecomment-461859685
         # max_pool_connections here is passed to the max_size param of urllib3.HTTPConnectionPool()
-        connection_pool_connections = max(MAX_POOL_CONNECTIONS, self._threads)  # type: ignore
+        connection_pool_connections = max(MAX_POOL_CONNECTIONS, self._threads * MAX_S3TRANSFER_CONCURRENCY)  # type: ignore
+        self._logger.debug(
+            f"Setting urllib3 ConnectionPool(maxsize={connection_pool_connections})"
+        )
         client_config = botocore.config.Config(  # type: ignore
             max_pool_connections=connection_pool_connections,
         )
@@ -266,6 +272,9 @@ class S3Fetch:
             raise KeyboardInterrupt
 
         self._logger.debug(f"Downloading s3://{self._bucket}{self._delimiter}{key}")
+        s3transfer_config = boto3.s3.transfer.TransferConfig(
+            use_threads=True, max_concurrency=MAX_S3TRANSFER_CONCURRENCY
+        )
         try:
             if not self._dry_run:
                 self.client.download_file(
@@ -273,6 +282,7 @@ class S3Fetch:
                     Key=key,
                     Filename=str(destination_filename),
                     Callback=self._download_callback,
+                    Config=s3transfer_config,
                 )
         except PermissionError as e:
             if not self._quiet:

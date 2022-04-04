@@ -19,6 +19,8 @@ from .exceptions import RegexError
 
 logging.basicConfig()
 
+MAX_S3TRANSFER_CONCURRENCY = 10
+
 
 class S3Fetch:
     def __init__(
@@ -70,14 +72,26 @@ class S3Fetch:
 
         self._download_dir = self._determine_download_dir(download_dir)
 
-        self._threads = threads or os.cpu_count()
+        # os.sched_getaffinity() is not available on MacOS so default back to
+        # os.cpu_count()
+        if threads:
+            self._threads = threads
+        else:
+            try:
+                self._threads = len(os.sched_getaffinity(0))  # type: ignore
+            except AttributeError:
+                self._threads = os.cpu_count()
+
         self._logger.debug(f"Using {self._threads} threads.")
 
         # https://stackoverflow.com/questions/53765366/urllib3-connectionpool-connection-pool-is-full-discarding-connection
         # https://github.com/boto/botocore/issues/619#issuecomment-461859685
         # max_pool_connections here is passed to the max_size param of urllib3.HTTPConnectionPool()
-        connection_pool_connections = max(MAX_POOL_CONNECTIONS, self._threads)
-        client_config = botocore.config.Config(
+        connection_pool_connections = max(MAX_POOL_CONNECTIONS, self._threads * MAX_S3TRANSFER_CONCURRENCY)  # type: ignore
+        self._logger.debug(
+            f"Setting urllib3 ConnectionPool(maxsize={connection_pool_connections})"
+        )
+        client_config = botocore.config.Config(  # type: ignore
             max_pool_connections=connection_pool_connections,
         )
 
@@ -87,6 +101,7 @@ class S3Fetch:
         self._successful_downloads = 0
 
         self._keyboard_interrupt_exit = threading.Event()
+        self._print_lock = threading.Lock()
 
     def _parse_and_split_s3_uri(self, s3_uri: str, delimiter: str) -> Tuple[str, str]:
         """Parse and split the S3 URI into bucket and path prefix.
@@ -130,8 +145,8 @@ class S3Fetch:
     def _retrieve_list_of_objects(self) -> None:
         """Retrieve a list of objects in the S3 bucket under the specified path prefix."""
         if not self._quiet:
-            prefix = f"'{self._prefix}'" if self._prefix else "no prefix"
-            print(f"Listing objects in bucket '{self._bucket}' with prefix {prefix}...")
+            prefix = f"'{self._prefix}'" if self._prefix else "None"
+            print(f"Listing objects in bucket '{self._bucket}' with prefix: {prefix}")
 
         paginator = self.client.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=self._bucket, Prefix=self._prefix):
@@ -256,6 +271,9 @@ class S3Fetch:
             raise KeyboardInterrupt
 
         self._logger.debug(f"Downloading s3://{self._bucket}{self._delimiter}{key}")
+        s3transfer_config = boto3.s3.transfer.TransferConfig(
+            use_threads=True, max_concurrency=MAX_S3TRANSFER_CONCURRENCY
+        )
         try:
             if not self._dry_run:
                 self.client.download_file(
@@ -263,17 +281,18 @@ class S3Fetch:
                     Key=key,
                     Filename=str(destination_filename),
                     Callback=self._download_callback,
+                    Config=s3transfer_config,
                 )
         except PermissionError as e:
             if not self._quiet:
-                print(f"{key}...error")
+                self._tprint(f"{key}...error")
             raise S3FetchPermissionError(
                 f"Permission error when attempting to write object to {destination_filename}"
             ) from e
         else:
             if not self._keyboard_interrupt_exit.is_set():
                 if not self._quiet:
-                    print(f"{key}...done")
+                    self._tprint(f"{key}...done")
 
     def _download_callback(self, *args, **kwargs):
         """boto3 callback, called whenever boto3 finishes downloading a chunk of an S3 object.
@@ -315,3 +334,13 @@ class S3Fetch:
         else:
             self._logger.debug(f"Object {key} did not match regex, skipped.")
             return False
+
+    def _tprint(self, msg: str) -> None:
+        """Thread safe printing.
+
+        :param msg: Text to print to the screen.
+        :type msg: str
+        """
+        self._print_lock.acquire(timeout=1)
+        print(msg)
+        self._print_lock.release()

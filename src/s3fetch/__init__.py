@@ -31,7 +31,7 @@ __version__ = pkg_resources.get_distribution("s3fetch").version
     "-t",
     "--threads",
     type=int,
-    help="Number of threads to use. Defaults to core count.",
+    help="Number of threads to use. Defaults to available core count.",
 )
 @click.option(
     "--dry-run", "--list-only", is_flag=True, help="List objects only, do not download."

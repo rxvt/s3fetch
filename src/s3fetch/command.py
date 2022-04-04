@@ -4,7 +4,6 @@ import os
 import queue
 import re
 import threading
-from logging import LogRecord
 from pathlib import Path
 from typing import Optional, Tuple
 

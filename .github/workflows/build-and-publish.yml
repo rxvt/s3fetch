@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Setup Poetry
-        uses: Gr1N/setup-poetry@v4
+        uses: Gr1N/setup-poetry@v8
       - name: Cache Poetry Dependencies
         uses: actions/cache@v1
         with:

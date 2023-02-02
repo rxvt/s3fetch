@@ -15,13 +15,13 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v3
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
       - name: Setup Poetry
         uses: Gr1N/setup-poetry@v8
       - name: Cache Poetry Dependencies
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~/.cache/pypoetry/virtualenvs
           key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}

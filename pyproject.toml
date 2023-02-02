@@ -9,7 +9,7 @@ repository = "https://github.com/rxvt/s3fetch"
 version = "1.1.3dev1"
 
 [tool.poetry.dependencies]
-boto3 = "^1.15.18"
+boto3 = "^1.26.63"
 click = "^8.0.0"
 python = "^3.7"
 urllib3 = "^1.26.8"

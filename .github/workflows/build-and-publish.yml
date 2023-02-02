@@ -2,7 +2,7 @@ name: Build and Publish
 on:
   workflow_run:
     workflows: [Test]
-    branches: [development, main]
+    branches: [main]
     types:
       - completed
 jobs:

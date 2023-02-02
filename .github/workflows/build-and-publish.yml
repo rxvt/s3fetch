@@ -13,15 +13,15 @@ jobs:
         python: [3.7]
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python }}
       - name: Setup Poetry
-        uses: Gr1N/setup-poetry@v8
+        uses: Gr1N/setup-poetry@v4
       - name: Cache Poetry Dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v1
         with:
           path: ~/.cache/pypoetry/virtualenvs
           key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
@@ -29,7 +29,10 @@ jobs:
             ${{ runner.os }}-poetry-
       - name: Poetry Install
         run: poetry install
-      - name: Build & Publish
-        env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.POETRY_PYPI_TOKEN_PYPI }}
-        run: poetry publish --build
+      - name: Build
+        run: poetry build
+      - name: Publish package
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.POETRY_PYPI_TOKEN_PYPI }}

@@ -1,10 +1,7 @@
 name: Build and Publish
 on:
-  workflow_run:
-    workflows: [Test]
+  push:
     branches: [main]
-    types:
-      - completed
 jobs:
   build-package:
     runs-on: ubuntu-latest

@@ -44,7 +44,7 @@
 	"remoteUser": "vscode",
 	// The poetry commands can't be run during the docker build process as the source directory is not mounted yet.
 	// The pyenv command gets a permission error I haven't investigated yet.
-	"postCreateCommand": "pyenv local 3.7.13 3.8.13 3.9.12 3.10.4 3.11.0 && poetry lock && poetry install",
+	"postCreateCommand": "pyenv local 3.7.13 3.8.13 3.9.12 3.10.4 3.11.1 && poetry lock && poetry install",
 	// Allow usage of AWS credentials inside the container.
 	"features": {
 		"ghcr.io/devcontainers/features/aws-cli:1": {

@@ -134,3 +134,6 @@ dmypy.json
 .DS_Store
 
 .envrc
+
+# Contains AWS secrets
+.devcontainer/devcontainer.env

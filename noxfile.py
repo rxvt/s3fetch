@@ -1,6 +1,5 @@
 import nox
-import nox_poetry.patch
-from nox.sessions import Session
+from nox_poetry import session, Session
 
 
 @nox.session(python=["3.7", "3.8", "3.9"])

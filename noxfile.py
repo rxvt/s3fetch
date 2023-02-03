@@ -2,7 +2,7 @@ import nox
 from nox_poetry import session, Session
 
 
-@nox.session(python=["3.7", "3.8", "3.9"])
+@nox.session(python=["3.7", "3.8", "3.9", "3.10", "3.11"])
 def tests(session: Session) -> None:
     session.install(".")
     session.install("pytest")

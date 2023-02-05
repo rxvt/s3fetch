@@ -18,7 +18,7 @@ def tests(session: Session) -> None:
     Args:
         session (Session): Nox Session object.
     """
-    args = session.posargs or ("--cov",)
+    args = session.posargs or ("tests/unit", "--cov")
     session.install(".")
     session.install("pytest")
     session.install("pytest-cov")

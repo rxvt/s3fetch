@@ -1,0 +1,3 @@
+[darglint]
+; allow one line docstrings
+strictness = short

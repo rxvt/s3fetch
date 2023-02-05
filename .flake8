@@ -1,0 +1,49 @@
+[flake8]
+select =
+    ; ANN Enable flake8-annotations warnings
+    ; B, B9 Enable flake8-bugbear. B9 is required for Bugbear’s more opinionated warnings.
+    ; BLK Enable flake8-black warnings
+    ; C Enable mccabe warnings
+    ; D Enable flake8-docstring (pydocstyle) warnings
+    ; DAR Enable darglint warnings
+    ; E, W Enable pycodestyle warnings
+    ; F Enable pyflakes warnings
+    ; I Enable flake8-isort warnings
+    ; S Enable flake8-bandit warnings
+    ANN,
+    B,
+    B9,
+    BLK,
+    C,
+    D,
+    DAR,
+    E,
+    W,
+    F,
+    I,
+    S
+max-complexity = 10
+; You can lookup most codes at https://www.flake8rules.com/
+ignore =
+    ; E203 Ignore whitespace before ':' as it conflicts with Black.
+    E203,
+    ; W503 Ignore break before binary operator as it conflicts with Black.
+    W503,
+    ; E501 Line longer than 79 characters as it conflicts with Black.
+    E501,
+    ; ANN101 Missing type annotation for self in method
+    ANN101,
+    ; S101 B101 Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+    ; https://stackoverflow.com/questions/68428293/s101-use-of-assert-detected-for-python-tests
+    B101,
+    S101
+max-line-length = 88
+docstring-convention = google
+
+; Don't run various rules on test files.
+per-file-ignores =
+    ; D104 Missing docstring in public package
+    tests/__init__.py:D104
+    tests/*/__init__.py:D104
+    ; ANN201 Missing return type annotation for public function
+    tests/*:S101,ANN201,B101

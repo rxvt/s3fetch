@@ -80,7 +80,7 @@ class S3Fetch:
             try:
                 self._threads = len(os.sched_getaffinity(0))  # type: ignore
             except AttributeError:
-                self._threads = os.cpu_count()
+                self._threads = os.cpu_count()  # type: ignore
 
         self._logger.debug(f"Using {self._threads} threads.")
 
@@ -96,8 +96,8 @@ class S3Fetch:
         )
 
         self.client = boto3.client("s3", region_name=region, config=client_config)
-        self._object_queue = queue.Queue()
-        self._failed_downloads = []
+        self._object_queue = queue.Queue()  # type: ignore
+        self._failed_downloads = []  # type: ignore
         self._successful_downloads = 0
 
         self._keyboard_interrupt_exit = threading.Event()

@@ -8,12 +8,12 @@ LINT_LOCATIONS = ("src", "tests", "./noxfile.py")
 
 # Default sessions
 # nox.options.sessions = ("lint", "tests", "mypy", "safety")
-nox.options.sessions = ("tests", "mypy", "safety")
+nox.options.sessions = ("unit", "mypy", "safety")
 
 
 @session(python=PYTHON_VERSIONS)
-def tests(session: Session) -> None:
-    """Run tests.
+def unit(session: Session) -> None:
+    """Run unit tests.
 
     Args:
         session (Session): Nox Session object.

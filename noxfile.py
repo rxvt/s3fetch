@@ -8,7 +8,7 @@ LINT_LOCATIONS = ("src", "tests", "./noxfile.py")
 
 # Default sessions
 # nox.options.sessions = ("lint", "tests", "mypy", "safety")
-nox.options.sessions = ("unit", "mypy", "safety")
+nox.options.sessions = ("unit", "mypy", "safety", "e2e")
 
 
 @session(python=PYTHON_VERSIONS)
@@ -29,6 +29,18 @@ def unit(session: Session) -> None:
     session.run("pytest", *args)
 
 
+@session(python=PYTHON_VERSIONS)
+def e2e(session: Session) -> None:
+    """Run e2e tests.
+
+    Args:
+        session (Session): Nox Session object.
+    """
+    args = session.posargs or ("tests/e2e",)
+    session.install(".")
+    session.install("pytest")
+    session.run("pytest", *args)
+    
 @session(python=MINIMUM_PYTHON_VERSION)
 def lint(session: Session) -> None:
     """Run various linters over source.

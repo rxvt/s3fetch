@@ -7,8 +7,8 @@ MINIMUM_PYTHON_VERSION = ("3.7",)
 LINT_LOCATIONS = ("src", "tests", "./noxfile.py")
 
 # Default sessions
-# nox.options.sessions = ("lint", "tests", "mypy", "safety")
-nox.options.sessions = ("unit", "mypy", "safety", "integration", "e2e")
+# TODO: Remember to re-enable "lint" session.
+nox.options.sessions = ("safety", "mypy", "unit", "integration", "e2e")
 
 
 @session(python=PYTHON_VERSIONS)

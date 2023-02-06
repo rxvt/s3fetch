@@ -35,3 +35,5 @@ jobs:
         run: poetry run nox --sessions tests-${{ matrix.python }}
       - name: Run Integration Tests
         run: poetry run nox --sessions integration-${{ matrix.python }}
+      - name: Run E2E Tests
+        run: poetry run nox --sessions e2e-${{ matrix.python }}

@@ -26,5 +26,5 @@ jobs:
             ${{ runner.os }}-poetry-
       - name: Poetry Install
         run: poetry install
-      - name: Run Tests
+      - name: Run Unit Tests
         run: poetry run nox --sessions tests-${{ matrix.python }}

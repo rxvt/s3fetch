@@ -26,5 +26,10 @@ jobs:
             ${{ runner.os }}-poetry-
       - name: Poetry Install
         run: poetry install
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1-node16
+        with:
+          role-to-assume: arn:aws:iam::935355401814:role/s3fetch-e2e-test-bot
+          aws-region: us-east-2
       - name: Run Unit Tests
         run: poetry run nox --sessions tests-${{ matrix.python }}

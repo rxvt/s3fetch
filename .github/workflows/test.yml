@@ -33,3 +33,5 @@ jobs:
           aws-region: us-east-2
       - name: Run Unit Tests
         run: poetry run nox --sessions tests-${{ matrix.python }}
+      - name: Run Integration Tests
+        run: poetry run nox --sessions integration-${{ matrix.python }}

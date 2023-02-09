@@ -5,7 +5,6 @@ import pytest
 from s3fetch.command import S3Fetch
 
 
-@pytest.mark.e2e
 def test_downloading_single_small_file(tmp_path):
     config = {
         "s3_uri": "s3://s3fetch-testing-us-east-2/small_files/01_small_test_file",
@@ -20,7 +19,6 @@ def test_downloading_single_small_file(tmp_path):
     assert file_contents == "This is the first test file.\n"
 
 
-@pytest.mark.e2e
 def test_only_single_small_file_is_downloaded(tmp_path):
     config = {
         "s3_uri": "s3://s3fetch-testing-us-east-2/small_files/01_small_test_file",

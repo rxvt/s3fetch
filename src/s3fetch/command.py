@@ -15,7 +15,8 @@ from botocore.exceptions import NoCredentialsError
 from .exceptions import DirectoryDoesNotExistError
 from .exceptions import NoCredentialsError as S3FetchNoCredentialsError
 from .exceptions import PermissionError as S3FetchPermissionError
-from .exceptions import RegexError
+from .exceptions import RegexError, S3FetchQueueEmpty
+from .s3 import get_download_queue
 
 logging.basicConfig()
 
@@ -96,7 +97,7 @@ class S3Fetch:
         )
 
         self.client = boto3.client("s3", region_name=region, config=client_config)
-        self._object_queue = queue.Queue()  # type: ignore
+        self._object_queue = get_download_queue()  # type: ignore
         self._failed_downloads = []  # type: ignore
         self._successful_downloads = 0
 
@@ -162,10 +163,9 @@ class S3Fetch:
                 self._filter_object,
                 (obj["Key"] for obj in page["Contents"]),
             ):
-                self._object_queue.put_nowait(key)
+                self._object_queue.put(key)
 
-        # Send sentinel value indicating pagination complete.
-        self._object_queue.put_nowait(None)
+        self._object_queue.close()
 
     def run(self) -> None:
         """Executes listing, filtering and downloading objects from the S3 bucket."""
@@ -186,8 +186,9 @@ class S3Fetch:
         ) as executor:
             futures = {}
             while True:
-                item = self._object_queue.get(block=True)
-                if item is None:  # Check for sentinel value
+                try:
+                    item = self._object_queue.get(block=True)
+                except S3FetchQueueEmpty:
                     break
                 futures[item] = executor.submit(self._download_object, item)
 

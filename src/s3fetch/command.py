@@ -1,7 +1,6 @@
 import concurrent.futures
 import logging
 import os
-import queue
 import re
 import threading
 from pathlib import Path

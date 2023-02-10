@@ -24,3 +24,11 @@ class NoObjectsFoundError(S3FetchError):
 
 class NoCredentialsError(S3FetchError):
     pass
+
+
+class InvalidCredentialsError(S3FetchError):  # noqa: D101
+    pass
+
+
+class S3FetchQueueEmpty(S3FetchError):  # noqa: D101
+    pass

@@ -13,6 +13,8 @@ boto3 = "^1.26.63"
 click = "^8.0.0"
 python = "^3.7"
 urllib3 = "^1.26.8"
+botocore-stubs = "^1.24.3"
+boto3-stubs = {extras = ["s3"], version = "^1.26.68"}
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.3.0"
@@ -29,8 +31,6 @@ flake8-bugbear = "^22.7.1"
 flake8-isort = "^4.1.1"
 flake8-docstrings = "^1.6.0"
 flake8-annotations = "^2.9.0"
-botocore-stubs = "^1.24.3"
-boto3-stubs = {extras = ["s3"], version = "^1.21.3"}
 isort = "^5.10.1"
 moto = {extras = ["s3"], version = "^3.0.5"}
 pydocstyle = "^6.1.1"

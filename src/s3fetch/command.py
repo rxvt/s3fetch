@@ -16,6 +16,7 @@ from .exceptions import NoCredentialsError as S3FetchNoCredentialsError
 from .exceptions import PermissionError as S3FetchPermissionError
 from .exceptions import RegexError, S3FetchQueueEmpty
 from .s3 import get_download_queue
+from .utils import tprint
 
 logging.basicConfig()
 
@@ -67,8 +68,13 @@ class S3Fetch:
         self._dry_run = dry_run
         self._delimiter = delimiter
         self._quiet = quiet
-        if self._dry_run and not self._quiet:
-            print("Operating in dry run mode. Will not download objects.")
+        self._print_lock = threading.Lock()
+        if self._dry_run:
+            tprint(
+                "Operating in dry run mode. Will not download objects.",
+                self._print_lock,
+                self._quiet,
+            )
 
         self._download_dir = self._determine_download_dir(download_dir)
 
@@ -101,7 +107,6 @@ class S3Fetch:
         self._successful_downloads = 0
 
         self._keyboard_interrupt_exit = threading.Event()
-        self._print_lock = threading.Lock()
 
     def _parse_and_split_s3_uri(self, s3_uri: str, delimiter: str) -> Tuple[str, str]:
         """Parse and split the S3 URI into bucket and path prefix.
@@ -177,8 +182,7 @@ class S3Fetch:
 
     def _download_objects(self) -> None:
         """Download objects from the specified S3 bucket and path prefix."""
-        if not self._quiet:
-            print("Starting downloads...")
+        tprint("Starting downloads...", self._print_lock, self._quiet)
 
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=self._threads
@@ -196,8 +200,7 @@ class S3Fetch:
                     future.result()
                     self._successful_downloads += 1
                 except KeyboardInterrupt:
-                    if not self._quiet:
-                        print("\nThreads are exiting...")
+                    tprint("\nThreads are exiting...", self._print_lock)
                     executor.shutdown(wait=False)
                     self._keyboard_interrupt_exit.set()
                     raise
@@ -208,7 +211,10 @@ class S3Fetch:
         """Print out a list of objects that failed to download (if any)."""
         if self._failed_downloads and not self._quiet:
             print()
-            print(f"{len(self._failed_downloads)} objects failed to download.")
+            tprint(
+                f"{len(self._failed_downloads)} objects failed to download.",
+                self._print_lock,
+            )
             for key, reason in self._failed_downloads:
                 print(f"{key}: {reason}")
 
@@ -284,15 +290,13 @@ class S3Fetch:
                     Config=s3transfer_config,
                 )
         except PermissionError as e:
-            if not self._quiet:
-                self._tprint(f"{key}...error")
+            tprint(f"{key}...error", self._print_lock, self._quiet)
             raise S3FetchPermissionError(
                 f"Permission error when attempting to write object to {destination_filename}"
             ) from e
         else:
             if not self._keyboard_interrupt_exit.is_set():
-                if not self._quiet:
-                    self._tprint(f"{key}...done")
+                tprint(f"{key}...done", self._print_lock, self._quiet)
 
     def _download_callback(self, *args, **kwargs):
         """boto3 callback, called whenever boto3 finishes downloading a chunk of an S3 object.
@@ -334,13 +338,3 @@ class S3Fetch:
         else:
             self._logger.debug(f"Object {key} did not match regex, skipped.")
             return False
-
-    def _tprint(self, msg: str) -> None:
-        """Thread safe printing.
-
-        :param msg: Text to print to the screen.
-        :type msg: str
-        """
-        self._print_lock.acquire(timeout=1)
-        print(msg)
-        self._print_lock.release()

@@ -11,11 +11,11 @@ import botocore
 from botocore.endpoint import MAX_POOL_CONNECTIONS
 from botocore.exceptions import NoCredentialsError
 
-from .exceptions import DirectoryDoesNotExistError
+from .exceptions import DirectoryDoesNotExistError, InvalidCredentialsError
 from .exceptions import NoCredentialsError as S3FetchNoCredentialsError
 from .exceptions import PermissionError as S3FetchPermissionError
 from .exceptions import RegexError, S3FetchQueueEmpty
-from .s3 import get_download_queue
+from .s3 import get_download_queue, start_listing_objects
 from .utils import tprint
 
 logging.basicConfig()
@@ -147,37 +147,27 @@ class S3Fetch:
         self._logger.debug(f"download_directory={download_directory}")
         return Path(download_directory)
 
-    def _retrieve_list_of_objects(self) -> None:
-        """Retrieve a list of objects in the S3 bucket under the specified path prefix."""
-        if not self._quiet:
-            prefix = f"'{self._prefix}'" if self._prefix else "None"
-            print(f"Listing objects in bucket '{self._bucket}' with prefix: {prefix}")
-
-        paginator = self.client.get_paginator("list_objects_v2")
-        for page in paginator.paginate(Bucket=self._bucket, Prefix=self._prefix):
-            if "Contents" not in page:
-                if not self._quiet:
-                    print("No objects found under prefix.")
-                break
-
-            if self._keyboard_interrupt_exit.is_set():
-                raise KeyboardInterrupt
-
-            for key in filter(
-                self._filter_object,
-                (obj["Key"] for obj in page["Contents"]),
-            ):
-                self._object_queue.put(key)
-
-        self._object_queue.close()
-
     def run(self) -> None:
         """Executes listing, filtering and downloading objects from the S3 bucket."""
+        prefix = f"'{self._prefix}'" if self._prefix else "None"
+        tprint(
+            f"Listing objects in bucket '{self._bucket}' with prefix: {prefix}",
+            self._print_lock,
+            self._quiet,
+        )
+
         try:
-            threading.Thread(target=self._retrieve_list_of_objects).start()
+            start_listing_objects(
+                bucket=self._bucket,
+                prefix=self._prefix,
+                client=self.client,
+                download_queue=self._object_queue,
+                delimiter=self._delimiter,
+                regex=self._regex,
+            )
             self._download_objects()
             self._check_for_failed_downloads()
-        except NoCredentialsError as e:
+        except (NoCredentialsError, InvalidCredentialsError) as e:
             raise S3FetchNoCredentialsError(e) from e
 
     def _download_objects(self) -> None:

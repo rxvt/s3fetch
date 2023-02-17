@@ -98,7 +98,7 @@ def list_objects(
         bucket (str): S3 bucket name.
         prefix (str): Download objects starting with this prefix.
         delimiter (str): Delimiter for the logical folder hierarchy.
-        regex (str): Regular expression to use for filtering objects.
+        regex (Optional[str]): Regular expression to use for filtering objects.
 
     Raises:
         InvalidCredentialsError: Raised if AWS credentials are invalid.

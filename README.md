@@ -157,3 +157,10 @@ Download objects ending in `.dmg`.
 s3fetch s3://my-test-bucket/ --regex '\.dmg$'
 ```
 
+## Troubleshooting
+
+### MacOS hangs when downloading using high number of threads
+
+From my testing this is caused by Spotlight on MacOS trying to index a large number of files at once.
+
+You can exclude the directory you're using to store your downloads via the Spotlight system preference control panel.

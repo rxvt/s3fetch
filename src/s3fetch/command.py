@@ -15,7 +15,7 @@ from .exceptions import DirectoryDoesNotExistError, InvalidCredentialsError
 from .exceptions import NoCredentialsError as S3FetchNoCredentialsError
 from .exceptions import PermissionError as S3FetchPermissionError
 from .exceptions import RegexError, S3FetchQueueEmpty
-from .s3 import get_download_queue, start_listing_objects
+from .s3 import get_download_queue, shutdown_download_threads, start_listing_objects
 from .utils import tprint
 
 logging.basicConfig()
@@ -69,6 +69,7 @@ class S3Fetch:
         self._delimiter = delimiter
         self._quiet = quiet
         self._print_lock = threading.Lock()
+        self._exit_requested = threading.Event()
         if self._dry_run:
             tprint(
                 "Operating in dry run mode. Will not download objects.",
@@ -105,8 +106,6 @@ class S3Fetch:
         self._object_queue = get_download_queue()  # type: ignore
         self._failed_downloads = []  # type: ignore
         self._successful_downloads = 0
-
-        self._keyboard_interrupt_exit = threading.Event()
 
     def _parse_and_split_s3_uri(self, s3_uri: str, delimiter: str) -> Tuple[str, str]:
         """Parse and split the S3 URI into bucket and path prefix.
@@ -164,11 +163,15 @@ class S3Fetch:
                 download_queue=self._object_queue,
                 delimiter=self._delimiter,
                 regex=self._regex,
+                exit_event=self._exit_requested,
             )
             self._download_objects()
             self._check_for_failed_downloads()
         except (NoCredentialsError, InvalidCredentialsError) as e:
             raise S3FetchNoCredentialsError(e) from e
+        except KeyboardInterrupt:
+            self._exit_requested.set()
+            raise KeyboardInterrupt
 
     def _download_objects(self) -> None:
         """Download objects from the specified S3 bucket and path prefix."""
@@ -177,25 +180,31 @@ class S3Fetch:
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=self._threads
         ) as executor:
-            futures = {}
-            while True:
-                try:
-                    item = self._object_queue.get(block=True)
-                except S3FetchQueueEmpty:
-                    break
-                futures[item] = executor.submit(self._download_object, item)
+            try:
+                futures = {}
+                while True:
+                    try:
+                        item = self._object_queue.get(block=True)
+                        futures[item] = executor.submit(
+                            self._download_object, item, self._exit_requested
+                        )
+                    except S3FetchQueueEmpty:
+                        break
 
-            for key, future in futures.items():
-                try:
-                    future.result()
-                    self._successful_downloads += 1
-                except KeyboardInterrupt:
-                    tprint("\nThreads are exiting...", self._print_lock)
-                    executor.shutdown(wait=False)
-                    self._keyboard_interrupt_exit.set()
-                    raise
-                except Exception as e:
-                    self._failed_downloads.append((key, e))
+                for key, future in futures.items():
+                    try:
+                        future.result()
+                        self._successful_downloads += 1
+                    except Exception as e:
+                        self._failed_downloads.append((key, e))
+            except KeyboardInterrupt:
+                self._exit_requested.set()
+                tprint(
+                    "\nThreads are exiting (this might take a while depending on the amount of threads)...",
+                    self._print_lock,
+                )
+                shutdown_download_threads(executor)
+                raise
 
     def _check_for_failed_downloads(self) -> None:
         """Print out a list of objects that failed to download (if any)."""
@@ -240,14 +249,20 @@ class S3Fetch:
 
         return directory, filename
 
-    def _download_object(self, key: str) -> None:
-        """Download S3 object from the specified bucket.
+    def _download_object(self, key: str, exit_event: threading.Event) -> None:
+        """Download an object from S3.
 
-        :param key: S3 object key
-        :type key: str
-        :raises KeyboardInterrupt: Raised hit user cancels operation with CTRL-C.
-        :raises S3FetchPermissionError: Raised if a permission error is encountered when writing object to disk.
+        Args:
+            key (str): S3 object key.
+            exit_event (threading.Event): Notify the script to exit.
+
+        Raises:
+            S3FetchPermissionError: _description_
         """
+        if exit_event.is_set():
+            self._logger.debug("Not downloading %s as exit_event is set", key)
+            return
+
         tmp_dest_directory, tmp_dest_filename = self._rollup_prefix(key)
 
         if tmp_dest_directory:
@@ -262,9 +277,6 @@ class S3Fetch:
                 pass
 
         destination_filename = destination_directory / Path(tmp_dest_filename)
-
-        if self._keyboard_interrupt_exit.is_set():
-            raise KeyboardInterrupt
 
         self._logger.debug(f"Downloading s3://{self._bucket}{self._delimiter}{key}")
         s3transfer_config = boto3.s3.transfer.TransferConfig(
@@ -285,16 +297,16 @@ class S3Fetch:
                 f"Permission error when attempting to write object to {destination_filename}"
             ) from e
         else:
-            if not self._keyboard_interrupt_exit.is_set():
+            if not self._exit_requested.is_set():
                 tprint(f"{key}...done", self._print_lock, self._quiet)
 
-    def _download_callback(self, *args, **kwargs):
+    def _download_callback(self, chunk):
         """boto3 callback, called whenever boto3 finishes downloading a chunk of an S3 object.
 
         :raises SystemExit: Raised if KeyboardInterrupt is raised in the main thread.
         """
-        if self._keyboard_interrupt_exit.is_set():
-            self._logger.debug("Main thread has told us to exit, so exiting.")
+        if self._exit_requested.is_set():
+            self._logger.debug("Main thread is exiting, cancelling download thread")
             raise SystemExit(1)
 
     def _filter_object(self, key: str) -> bool:

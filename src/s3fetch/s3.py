@@ -1,6 +1,7 @@
 import logging
 import re
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 from typing import Generator, Optional
 
@@ -54,6 +55,7 @@ def start_listing_objects(
     download_queue: S3FetchQueue,
     delimiter: str,
     regex: Optional[str],
+    exit_event: threading.Event,
 ) -> None:
     """Starts a seperate thread that lists of objects from the specified S3 bucket
     and prefix, filters the object list and adds the valid objects to the download
@@ -66,6 +68,7 @@ def start_listing_objects(
         download_queue (S3FetchQueue): FIFO download queue.
         delimiter (str): Delimiter for the logical folder hierarchy.
         regex (Optional[str]): Regular expression to use for filtering objects.
+        exit_event (threading.Event): Notify that script to exit.
     """
     # Start a single thread to list the objects
     threading.Thread(
@@ -78,6 +81,7 @@ def start_listing_objects(
             "queue": download_queue,
             "delimiter": delimiter,
             "regex": regex,
+            "exit_event": exit_event,
         },
     ).start()
 
@@ -89,6 +93,7 @@ def list_objects(
     prefix: str,
     delimiter: str,
     regex: Optional[str],
+    exit_event: threading.Event,
 ) -> None:
     """List objects in an S3 bucket prefixed by `prefix`.
 
@@ -99,12 +104,18 @@ def list_objects(
         prefix (str): Download objects starting with this prefix.
         delimiter (str): Delimiter for the logical folder hierarchy.
         regex (Optional[str]): Regular expression to use for filtering objects.
+        exit_event (threading.Event): Notify that script to exit.
 
     Raises:
         InvalidCredentialsError: Raised if AWS credentials are invalid.
     """
     try:
         for obj_key in paginate_objects(client=client, bucket=bucket, prefix=prefix):
+            if exit_event.is_set():
+                logger.debug(
+                    "Not adding %s to download queue as exit_event is set", obj_key
+                )
+                raise SystemExit()
             if not filter_object(obj_key, delimiter, regex):
                 continue
             add_object_to_download_queue(obj_key, queue)
@@ -217,3 +228,13 @@ def close_download_queue(queue: S3FetchQueue) -> None:
     """
     queue.close()
     logger.debug("Added sentinel message to download queue")
+
+
+def shutdown_download_threads(executor: ThreadPoolExecutor) -> None:
+    """Shutdown the download threads.
+
+    Args:
+        executor (ThreadPoolExecutor): Executor object.
+    """
+    logger.debug("Shutting down download threads")
+    executor.shutdown(wait=False)

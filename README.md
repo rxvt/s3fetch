@@ -29,7 +29,7 @@ Benchmarking shows (see below) that S3Fetch can finish downloading 428 objects f
 
 Downloading 428 objects under the `fake-prod-data/2020-10-17` prefix from a bucket containing a total of 12,204,097 objects.
 
-#### With 100 threads
+### With 100 threads
 
 ```text
 s3fetch s3://fake-test-bucket/fake-prod-data/2020-10-17  --threads 100
@@ -44,6 +44,7 @@ Timed out while listing objects after 60min.
 ```
 
 #### With 8 threads
+
 ```text
 s3fetch s3://fake-test-bucket/fake-prod-data/2020-10-17  --threads 8
 
@@ -71,15 +72,13 @@ Ensure you have [pipx](https://pypi.org/project/pipx/) installed, then:
 
 `pipx install s3fetch`
 
-
 ### pip
 
 `pip3 install s3fetch`
 
+## Usage
 
-## Usage:
-
-```
+```text
 Usage: s3fetch [OPTIONS] S3_URI
 
   Easily download objects from an S3 bucket.
@@ -105,13 +104,13 @@ Options:
   --help                  Show this message and exit.
 ```
 
-## Examples:
+## Examples
 
 ### Full example
 
 Download using 100 threads into `~/Downloads/tmp`, only downloading objects that end in `.dmg`.
 
-```
+```text
 $ s3fetch s3://my-test-bucket --download-dir ~/Downloads/tmp/ --threads 100  --regex '\.dmg$'
 test-1.dmg...done
 test-2.dmg...done
@@ -122,35 +121,39 @@ test-5.dmg...done
 
 ### Download all objects from a bucket
 
-```
+```text
 s3fetch s3://my-test-bucket/
 ```
 
-### Download objects with a specific prefix 
+### Download objects with a specific prefix
 
 Download all objects that strt with `birthday-photos/2020-01-01`.
-```
+
+```text
 s3fetch s3://my-test-bucket/birthday-photos/2020-01-01
 ```
 
 ### Download objects to a specific directory
 
 Download objects to the `~/Downloads` directory.
-```
+
+```text
 s3fetch s3://my-test-bucket/ --download-dir ~/Downloads
 ```
 
 ### Download multiple objects concurrently
 
 Download 100 objects concurrently.
-```
+
+```text
 s3fetch s3://my-test-bucket/ --threads 100
 ```
 
 ### Filter objects using regular expressions
 
 Download objects ending in `.dmg`.
-```
+
+```text
 s3fetch s3://my-test-bucket/ --regex '\.dmg$'
 ```
 

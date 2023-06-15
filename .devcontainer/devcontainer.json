@@ -50,8 +50,7 @@
 			"version": "latest"
 		}
 	},
-	"runArgs": [
-		"--env-file",
-		".devcontainer/devcontainer.env"
+	"mounts": [
+		"source=${env:HOME}${env:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind"
 	]
 }

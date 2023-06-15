@@ -140,3 +140,5 @@ dmypy.json
 
 # TODO
 TODO.md
+
+.ruff_cache

@@ -52,6 +52,7 @@ show_missing = true
 [tool.mypy]
 python_version = "3.9"
 ignore_missing_imports = true
+files = "src/s3fetch, tests"
 
 [[tool.mypy.overrides]]
 module = ["s3fetch", "pkg_resources"]
@@ -82,7 +83,7 @@ target-version = "py39"
 ignore = [
     "ANN204", # Ignore return type annotation for special methods
     "ANN101", #Ignore missing type annotation for self in method
-    ]  
+    ]
 
 [tool.ruff.pydocstyle]
 # Use Google-style docstrings.

@@ -15,26 +15,26 @@ def test_queue_raises_exception_when_sentinel_value_found():
 
 
 @pytest.mark.parametrize("delimiter", ["/", ":"])
-def test_exclude_directory_from_objects(delimiter):
+def test_exclude_directory_from_objects(delimiter: str):
     key = f"small_files{delimiter}"
     result = s3.check_if_key_is_directory(key=key, delimiter=delimiter)
     assert result is True
 
 
 @pytest.mark.parametrize("delimiter", ["/", ":"])
-def test_not_excluding_non_directory_from_objects(delimiter):
+def test_not_excluding_non_directory_from_objects(delimiter: str):
     key = f"small_files{delimiter}my_photo"
     result = s3.check_if_key_is_directory(key=key, delimiter=delimiter)
     assert result is False
 
 
 @pytest.mark.parametrize("key,", ["my_test_file", "my_dir/my_test_file"])
-def test_skip_keys_containing_only_letters(key):
+def test_skip_keys_containing_only_letters(key: str):
     result = s3.filter_by_regex(key=key, regex=r"\d")
     assert result is False
 
 
 @pytest.mark.parametrize("key,", ["my_test_file", "my_dir/my_test_file"])
-def test_include_keys_starting_with_my_(key):
+def test_include_keys_starting_with_my_(key: str):
     result = s3.filter_by_regex(key=key, regex=r"^my_")
     assert result is True

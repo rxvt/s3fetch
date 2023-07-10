@@ -122,11 +122,11 @@ def list_objects(
     """
     try:
         for obj_key in paginate_objects(client=client, bucket=bucket, prefix=prefix):
-            if exit_event.is_set():
+            if exit_requested(exit_event):
                 logger.debug(
                     "Not adding %s to download queue as exit_event is set", obj_key
                 )
-                raise SystemExit()
+                raise SystemExit
             if not filter_object(obj_key, delimiter, regex):
                 continue
             add_object_to_download_queue(obj_key, queue)
@@ -153,6 +153,20 @@ def paginate_objects(client: S3Client, bucket: str, prefix: str = "") -> Generat
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
         for obj in page.get("Contents", []):
             yield obj.get("Key")
+
+
+def exit_requested(exit_event: threading.Event) -> bool:
+    """Check if the exit_event has been set.
+
+    Args:
+        exit_event (threading.Event): Threading.Event object.
+
+    Returns:
+        bool: True if the exit_event has been set, False otherwise.
+    """
+    if exit_event.is_set():
+        return True
+    return False
 
 
 def filter_object(key: str, delimiter: str, regex: Optional[str]) -> bool:

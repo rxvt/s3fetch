@@ -95,3 +95,10 @@ def test_calling_exit_event_while_listing_objects(s3_client):
             exit_event=exit_event,
         )
     queue.close()
+
+
+def test_exit_requested():
+    exit_event = threading.Event()
+    assert s3.exit_requested(exit_event=exit_event) is False
+    exit_event.set()
+    assert s3.exit_requested(exit_event=exit_event) is True

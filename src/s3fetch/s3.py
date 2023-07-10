@@ -170,10 +170,11 @@ def exit_requested(exit_event: threading.Event) -> bool:
 
 
 def exclude_object(key: str, delimiter: str, regex: Optional[str]) -> bool:
-    """Determines if an S3 object should be downloaded.
+    """Determines if an S3 object should be added to the download queue.
 
-    This is a wrapper for checking if the object key is a 'directory' or
-    if the object matches a provided regular expression.
+    This is a wrapper for checking if the object key should be added to the download
+    queue. Reasons for excluding an object could be it's a 'directory' or if the object
+    matches a provided regular expression.
 
     Args:
         key (str): S3 object key.

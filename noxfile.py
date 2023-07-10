@@ -104,7 +104,7 @@ def coverage(session: Session) -> None:
 @session(python=MINIMUM_PYTHON_VERSION)
 def coverage_html(session: Session) -> None:
     """Run test coverage report generating HTML output."""
-    session.posargs = ("html",)
+    session.posargs = ("html",)  # type: ignore
     session.install("coverage[toml]")
     coverage(session)
 

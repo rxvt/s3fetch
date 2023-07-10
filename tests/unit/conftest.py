@@ -1,4 +1,3 @@
-"""S3Fetch conftest."""
 import os
 from typing import Generator
 

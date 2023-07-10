@@ -4,8 +4,6 @@
 ARG VARIANT="3.11-bullseye"
 FROM mcr.microsoft.com/vscode/devcontainers/python:0-${VARIANT}
 
-ENV PYTHON_37=3.7.13
-ENV PYTHON_38=3.8.13
 ENV PYTHON_39=3.9.12
 ENV PYTHON_310=3.10.4
 ENV PYTHON_311=3.11.1
@@ -32,12 +30,10 @@ RUN git clone https://github.com/pyenv/pyenv.git ~/.pyenv \
     && echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.profile \
     && echo 'eval "$(pyenv init --path)"' >> ~/.profile \
     && echo 'if command -v pyenv >/dev/null; then eval "$(pyenv init -)"; fi' >> ~/.bashrc
-RUN curl -sSL https://install.python-poetry.org | python3 -
-RUN $HOME/.local/bin/poetry config virtualenvs.prefer-active-python true
-RUN $HOME/.local/bin/poetry config virtualenvs.in-project true
-RUN $HOME/.pyenv/bin/pyenv install --skip-existing $PYTHON_37
-RUN $HOME/.pyenv/bin/pyenv install --skip-existing $PYTHON_38
 RUN $HOME/.pyenv/bin/pyenv install --skip-existing $PYTHON_39
 RUN $HOME/.pyenv/bin/pyenv install --skip-existing $PYTHON_310
 RUN $HOME/.pyenv/bin/pyenv install --skip-existing $PYTHON_311
-RUN $HOME/.pyenv/bin/pyenv global $PYTHON_37
+RUN $HOME/.pyenv/bin/pyenv global $PYTHON_38
+RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN $HOME/.local/bin/poetry config virtualenvs.prefer-active-python true
+RUN $HOME/.local/bin/poetry config virtualenvs.in-project true

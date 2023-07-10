@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class S3FetchQueue:
     """Wrapper around a standard Python FIFO queue."""
 
-    def __init__(self):
+    def __init__(self):  # noqa: D107
         self.queue = Queue()
 
     def put(self, key: Optional[str]) -> None:

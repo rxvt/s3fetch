@@ -78,7 +78,7 @@ def black(session: Session) -> None:
     """
     args = session.posargs or LINT_LOCATIONS
     session.install("black")
-    session.run("black", *args)
+    session.run("black", "--check", *args)
 
 
 @session(python=MINIMUM_PYTHON_VERSION)

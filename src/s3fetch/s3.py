@@ -71,7 +71,6 @@ def start_listing_objects(
         regex (Optional[str]): Regular expression to use for filtering objects.
         exit_event (threading.Event): Notify that script to exit.
     """
-    # Start a single thread to list the objects
     threading.Thread(
         name="list_objects",
         target=list_objects,

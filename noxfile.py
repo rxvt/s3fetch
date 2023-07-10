@@ -2,8 +2,8 @@
 import nox
 from nox_poetry import Session, session
 
-PYTHON_VERSIONS = ("3.7", "3.8", "3.9", "3.10", "3.11")
-MINIMUM_PYTHON_VERSION = ("3.7",)
+PYTHON_VERSIONS = ("3.9", "3.10", "3.11")
+MINIMUM_PYTHON_VERSION = ("3.9",)
 LINT_LOCATIONS = ("src", "tests", "./noxfile.py")
 
 # Default sessions

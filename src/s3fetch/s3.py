@@ -127,7 +127,7 @@ def list_objects(
                     "Not adding %s to download queue as exit_event is set", obj_key
                 )
                 raise SystemExit
-            if not exclude_object(obj_key, delimiter, regex):
+            if exclude_object(obj_key, delimiter, regex):
                 continue
             add_object_to_download_queue(obj_key, queue)
         close_download_queue(queue)
@@ -187,10 +187,10 @@ def exclude_object(key: str, delimiter: str, regex: Optional[str]) -> bool:
     # If true then object is included in results
     if check_if_key_is_directory(key=key, delimiter=delimiter):
         logger.debug("Excluded directory %s from results", key)
-        return False
+        return True
     if regex and not filter_by_regex(key=key, regex=regex):
-        return False
-    return True
+        return True
+    return False
 
 
 def check_if_key_is_directory(key: str, delimiter: str) -> bool:

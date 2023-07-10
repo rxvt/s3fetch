@@ -64,16 +64,9 @@ def lint(session: Session) -> None:
     """
     args = session.posargs or LINT_LOCATIONS
     session.install(
-        "flake8",
-        "flake8-black",
-        "flake8-isort",
-        "flake8-bugbear",
-        "flake8-bandit",
-        "flake8-annotations",
-        "flake8-docstrings",
-        "darglint",
+        "ruff",
     )
-    session.run("flake8", *args)
+    session.run("ruff", *args)
 
 
 @session(python=MINIMUM_PYTHON_VERSION)

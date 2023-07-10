@@ -127,7 +127,7 @@ def list_objects(
                     "Not adding %s to download queue as exit_event is set", obj_key
                 )
                 raise SystemExit
-            if not filter_object(obj_key, delimiter, regex):
+            if not exclude_object(obj_key, delimiter, regex):
                 continue
             add_object_to_download_queue(obj_key, queue)
         close_download_queue(queue)
@@ -169,7 +169,7 @@ def exit_requested(exit_event: threading.Event) -> bool:
     return False
 
 
-def filter_object(key: str, delimiter: str, regex: Optional[str]) -> bool:
+def exclude_object(key: str, delimiter: str, regex: Optional[str]) -> bool:
     """Determines if an S3 object should be downloaded.
 
     This is a wrapper for checking if the object key is a 'directory' or

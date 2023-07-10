@@ -1,3 +1,5 @@
+import threading
+
 import pytest
 from s3fetch import s3
 
@@ -46,3 +48,28 @@ def test_putting_object_onto_download_queue():
     s3.add_object_to_download_queue(key=key, queue=queue)
     assert queue.get() == key
     queue.close()
+
+
+def test_listing_objects_in_bucket_and_adding_objects_to_queue(s3_client):
+    bucket = "my_bucket"
+    queue = s3.get_download_queue()
+    key = "my_test_file"
+    s3_client.create_bucket(Bucket=bucket)
+    s3_client.put_object(Bucket=bucket, Key=key, Body=b"test data")
+    exit_event = threading.Event()
+
+    s3.list_objects(
+        client=s3_client,
+        queue=queue,
+        bucket=bucket,
+        prefix="",
+        delimiter="/",
+        regex=None,
+        exit_event=exit_event,
+    )
+
+    assert queue.get() == key
+    queue.close()
+
+    with pytest.raises(s3.S3FetchQueueEmpty):
+        queue.get()

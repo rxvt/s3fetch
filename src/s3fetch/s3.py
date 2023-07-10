@@ -23,19 +23,28 @@ class S3FetchQueue:
         self.queue = Queue()
 
     def put(self, key: Optional[str]) -> None:
-        self.queue.put_nowait(key)
-
-    # TODO: Remove this after refactor, should only use self.put()
-    def put_nowait(self, key: Optional[str]) -> None:
+        """Add object key to the download queue."""
         self.queue.put_nowait(key)
 
     def get(self, block: bool = False) -> str:
+        """Get object key from the download queue.
+
+        Args:
+            block (bool, optional): Block until an item if available. Defaults to False.
+
+        Raises:
+            S3FetchQueueEmpty: Raised when the queue is empty.
+
+        Returns:
+            str: _description_
+        """
         key = self.queue.get(block=block)
         if key is None:
             raise S3FetchQueueEmpty  # TODO: Change this to S3FetchQueueClosed
         return key
 
     def close(self) -> None:
+        """Close queue by adding a sentinel message of None onto the download queue."""
         self.queue.put(None)
 
 
@@ -58,7 +67,9 @@ def start_listing_objects(
     regex: Optional[str],
     exit_event: threading.Event,
 ) -> None:
-    """Starts a seperate thread that lists of objects from the specified S3 bucket
+    """Starts a seperate thread that lists of objects from the specified S3 bucket.
+
+    Starts a seperate thread that lists of objects from the specified S3 bucket
     and prefix, filters the object list and adds the valid objects to the download
     queue.
 
@@ -184,8 +195,10 @@ def check_if_key_is_directory(key: str, delimiter: str) -> bool:
 
 
 def filter_by_regex(key: str, regex: str) -> bool:
-    """Filter objects by regular expression. If an object matches the regex then it is
-    included in the list of objects to download.
+    """Filter objects by regular expression.
+
+    If an object matches the regex then it is included in the list of objects to
+    download.
 
     Args:
         key (str): S3 object key.

@@ -11,7 +11,7 @@ version = "1.1.4"
 [tool.poetry.dependencies]
 boto3 = "^1.26.63"
 click = "^8.0.0"
-python = "^3.7"
+python = "^3.9"
 urllib3 = "^1.26.8"
 botocore-stubs = "^1.24.3"
 boto3-stubs = {extras = ["s3"], version = "^1.26.68"}
@@ -29,6 +29,7 @@ coverage = {extras = ["toml"], version = "^6.4.1"}
 types-setuptools = "^57.4.18"
 safety = "^2.1.1"
 ruff = "^0.0.272"
+pre-commit = "^3.3.3"
 
 [tool.poetry.scripts]
 s3fetch = 's3fetch.cli:cli'
@@ -49,7 +50,7 @@ show_missing = true
 # fail_under = 100
 
 [tool.mypy]
-python_version = "3.7"
+python_version = "3.9"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -77,8 +78,28 @@ select = [
     "I",
     "S"
 ]
-target-version = "py37"
+target-version = "py39"
+ignore = [
+    "ANN204", # Ignore return type annotation for special methods
+    "ANN101", #Ignore missing type annotation for self in method
+    ]  
 
 [tool.ruff.pydocstyle]
 # Use Google-style docstrings.
 convention = "google"
+
+# Ignore `E402` (import violations) in all `__init__.py` files, and in `path/to/file.py`.
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["D104"]
+"tests/unit/test_s3fetch_old.py" = ["ALL"]  # Remove after all tests migrated
+"tests/*" = [
+    "ANN201",  # Ignore missing return types for test functions
+    "ANN001",  # Ignore missing type annotations for test functions
+    "D103",  # Ignore missing docstrings in test functions as the function name should be descriptive.
+    "D100",
+    "S101"  # Ignore use of 'assert'
+    ]
+"src/s3fetch/command.py" = ["ALL"]  # TODO: Remove after refactor is finished.
+
+[tool.isort]
+profile = "black"

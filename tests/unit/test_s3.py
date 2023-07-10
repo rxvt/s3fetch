@@ -38,3 +38,11 @@ def test_skip_keys_containing_only_letters(key: str):
 def test_include_keys_starting_with_my_(key: str):
     result = s3.filter_by_regex(key=key, regex=r"^my_")
     assert result is True
+
+
+def test_putting_object_onto_download_queue():
+    queue = s3.get_download_queue()
+    key = "my_test_file"
+    s3.add_object_to_download_queue(key=key, queue=queue)
+    assert queue.get() == key
+    queue.close()

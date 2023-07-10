@@ -54,7 +54,7 @@ def cli(
     delimiter: str,
     quiet: bool,
     version: bool,
-):
+) -> None:
     """Easily download objects from an S3 bucket.
 
     Example: s3fetch s3://my-test-bucket/my/birthdy-photos/2020-01-01

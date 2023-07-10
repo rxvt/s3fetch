@@ -8,7 +8,7 @@ from moto import mock_s3
 
 
 @pytest.fixture(scope="package", autouse=True)
-def aws_credentials():
+def aws_credentials() -> None:
     """Mock AWS Credentials for Moto."""
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"  # noqa: S105

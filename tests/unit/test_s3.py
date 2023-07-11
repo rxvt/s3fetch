@@ -3,7 +3,7 @@ import threading
 import boto3
 import pytest
 from s3fetch import s3
-from s3fetch.exceptions import InvalidCredentialsError
+from s3fetch.exceptions import InvalidCredentialsError, RegexError
 
 
 def test_create_download_queue():
@@ -182,3 +182,11 @@ def test_excluding_objects_due_to_regex():
     regex = r"\w"
     result = s3.exclude_object(key=key, delimiter=delimiter, regex=regex)
     assert result is False
+
+
+def test_filtering_by_regex_throws_exception():
+    key = "my_test_file"
+
+    regex = r"["
+    with pytest.raises(RegexError):
+        s3.filter_by_regex(key=key, regex=regex)

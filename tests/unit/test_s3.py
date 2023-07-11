@@ -102,3 +102,23 @@ def test_exit_requested():
     assert s3.exit_requested(exit_event=exit_event) is False
     exit_event.set()
     assert s3.exit_requested(exit_event=exit_event) is True
+
+
+@pytest.mark.parametrize(
+    "key,delimiter,expected_result",
+    [
+        ("my_test_file/", "/", True),
+        ("my_test_file:", ":", True),
+        ("my_test_file", "/", False),
+        ("my_test_file", ":", False),
+        ("my_dir/my_test_file/", "/", True),
+        ("my_dir:my_test_file:", ":", True),
+        ("my_dir/my_test_file", "/", False),
+        ("my_dir:my_test_file", ":", False),
+    ],
+)
+def test_excluding_directory_objects_from_download_queue(
+    key, delimiter, expected_result
+):
+    result = s3.exclude_object(key=key, delimiter=delimiter, regex=None)
+    assert result is expected_result

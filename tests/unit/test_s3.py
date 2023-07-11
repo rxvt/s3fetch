@@ -1,7 +1,9 @@
 import threading
 
+import boto3
 import pytest
 from s3fetch import s3
+from s3fetch.exceptions import InvalidCredentialsError
 
 
 def test_create_download_queue():
@@ -97,6 +99,27 @@ def test_adding_single_directory_key_to_queue(s3_client):
 
     with pytest.raises(s3.S3FetchQueueEmpty):
         queue.get()
+
+
+def test_listing_objects_with_no_credentials():
+    # Don't import mocked S3 client here as we want the credentials to be invalid.
+    s3_client = boto3.client("s3", region_name="us-east-1")
+
+    bucket = "my_bucket"
+    queue = s3.get_download_queue()
+    queue.close()
+    exit_event = threading.Event()
+
+    with pytest.raises(InvalidCredentialsError):
+        s3.list_objects(
+            client=s3_client,
+            queue=queue,
+            bucket=bucket,
+            prefix="",
+            delimiter="/",
+            regex=None,
+            exit_event=exit_event,
+        )
 
 
 def test_calling_exit_event_while_listing_objects(s3_client):

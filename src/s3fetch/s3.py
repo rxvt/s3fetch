@@ -6,10 +6,10 @@ from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 from typing import Generator, Optional
 
-from botocore.exceptions import NoCredentialsError
+from botocore.exceptions import ClientError
 from mypy_boto3_s3.client import S3Client
 
-from s3fetch.exceptions import InvalidCredentialsError, RegexError
+from s3fetch.exceptions import InvalidCredentialsError, PermissionError, RegexError
 
 from .exceptions import S3FetchQueueEmpty
 
@@ -131,8 +131,13 @@ def list_objects(
                 continue
             add_object_to_download_queue(obj_key, queue)
         close_download_queue(queue)
-    except NoCredentialsError as e:
-        raise InvalidCredentialsError(e) from e
+    except ClientError as e:
+        if e.response.get("Error", {}).get("Code") == "InvalidAccessKeyId":
+            raise InvalidCredentialsError(e) from e
+        elif e.response.get("Error", {}).get("Code") == "AccessDenied":
+            raise PermissionError(e) from e
+        else:
+            raise e
     logger.debug("Finished adding objects to download queue")
 
 

@@ -169,3 +169,16 @@ def test_excluding_directory_objects_from_download_queue(
 ):
     result = s3.exclude_object(key=key, delimiter=delimiter, regex=None)
     assert result is expected_result
+
+
+def test_excluding_objects_due_to_regex():
+    delimiter = "/"
+    key = "my_test_file"
+
+    regex = r"\d"
+    result = s3.exclude_object(key=key, delimiter=delimiter, regex=regex)
+    assert result is True
+
+    regex = r"\w"
+    result = s3.exclude_object(key=key, delimiter=delimiter, regex=regex)
+    assert result is False

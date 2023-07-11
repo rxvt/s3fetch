@@ -36,7 +36,7 @@ class S3FetchQueue:
             S3FetchQueueEmpty: Raised when the queue is empty.
 
         Returns:
-            str: _description_
+            str: S3 object key.
         """
         key = self.queue.get(block=block)
         if key is None:

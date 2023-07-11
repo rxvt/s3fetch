@@ -50,35 +50,6 @@ def test_s3fetch_obj(s3fetch):
     ]
 
 
-def test_filter_object(s3fetch):
-    expected_objects = [
-        "one_mytestobject_one",
-        "two_mytestobject_two",
-        "three_mytestobject_three",
-    ]
-    s3fetch._regex = r"^\w+_\w+_\w+$"
-    tmp_list = []
-    for key in filter(s3fetch._filter_object, expected_objects):
-        tmp_list.append(key)
-    assert tmp_list == expected_objects
-
-
-def test_filter_object_no_regex(s3fetch):
-    expected_objects = [
-        "one_mytestobject_one",
-        "two_mytestobject_two",
-        "three_mytestobject_three",
-        "four*mytestobject*four",
-        "five)mytestobject_five",
-        "six!mytestdirectoryobject!six/",
-    ]
-    s3fetch._regex = None
-    tmp_list = []
-    for key in filter(s3fetch._filter_object, (obj for obj in expected_objects)):
-        tmp_list.append(key)
-    assert tmp_list == expected_objects[0:-1]
-
-
 # TODO: Fixup once moto tests are working.
 # NoObjectsFoundError now raised by_retrieve_list_of_objects
 # def test_filter_object_no_matching_objects(s3fetch):
@@ -147,18 +118,6 @@ def test_determine_download_dir_dir_specified_and_raises(s3fetch, mocker):
     expected_directory = "/home/test/Downloads"
     with pytest.raises(DirectoryDoesNotExistError):
         s3fetch._determine_download_dir(expected_directory)
-
-
-def test_remove_directories(s3fetch):
-    expected_objects = [
-        "five)mytestobject_five",
-        "six!mytestdirectoryobject!six/",
-    ]
-    s3fetch._regex = None
-    tmp_list = []
-    for key in filter(s3fetch._filter_object, (obj for obj in expected_objects)):
-        tmp_list.append(key)
-    assert tmp_list == ["five)mytestobject_five"]
 
 
 def test_parse_and_split_s3_uri_full_path(s3fetch):

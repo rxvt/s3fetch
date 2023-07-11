@@ -308,35 +308,3 @@ class S3Fetch:
         if self._exit_requested.is_set():
             self._logger.debug("Main thread is exiting, cancelling download thread")
             raise SystemExit(1)
-
-    def _filter_object(self, key: str) -> bool:
-        """Filter function for the `filter()` call used to determine if an
-        object key should be included in the list of objects to download.
-
-        :param key: S3 object key.
-        :type key: str
-        :returns: True if object key matches regex or no regex provided. False otherwise.
-        :raises RegexError: Raised if the regular expression is invalid.
-        """
-        # Discard key if it's a 'directory'
-        if key.endswith(self._delimiter):
-            return False
-
-        if not self._regex:
-            self._logger.debug("No regex detected.")
-            return True
-
-        try:
-            rexp = re.compile(rf"{self._regex}")
-        except re.error as e:
-            msg = f"Regex error: {repr(e)}"
-            if self._debug:
-                raise RegexError(msg) from e
-            raise RegexError(msg)
-
-        if rexp.search(key):
-            self._logger.debug(f"Object {key} matched regex, added to object list.")
-            return True
-        else:
-            self._logger.debug(f"Object {key} did not match regex, skipped.")
-            return False

@@ -3,7 +3,11 @@ import threading
 import boto3
 import pytest
 from s3fetch import s3
-from s3fetch.exceptions import InvalidCredentialsError, RegexError
+from s3fetch.exceptions import (
+    InvalidCredentialsError,
+    PrefixDoesNotExistError,
+    RegexError,
+)
 
 
 def test_create_download_queue():
@@ -190,3 +194,35 @@ def test_filtering_by_regex_throws_exception():
     regex = r"["
     with pytest.raises(RegexError):
         s3.filter_by_regex(key=key, regex=regex)
+
+
+@pytest.mark.parametrize(
+    "prefix,delimiter,key,expected_result",
+    [
+        ("", "/", "my/test/prefix/my_test_file", "my/test/prefix/my_test_file"),
+        ("my/test/prefix/", "/", "my/test/prefix/my_test_file", "my_test_file"),
+        ("my/test/prefix", "/", "my/test/prefix/my_test_file", "prefix/my_test_file"),
+        ("my/test/pre", "/", "my/test/prefix/my_test_file", "prefix/my_test_file"),
+        ("my/tes", "/", "my/test/prefix/my_test_file", "test/prefix/my_test_file"),
+        ("my:test:prefix:", ":", "my:test:prefix:my_test_file", "my_test_file"),
+        ("my:test:prefix", ":", "my:test:prefix:my_test_file", "prefix:my_test_file"),
+        ("my:test:pre", ":", "my:test:prefix:my_test_file", "prefix:my_test_file"),
+    ],
+)
+def test_rolling_up_object_key_with_valid_prefix(
+    prefix, delimiter, key, expected_result
+):
+    result = s3.rollup_object_key_by_prefix(key=key, delimiter=delimiter, prefix=prefix)
+    assert expected_result == result
+
+
+@pytest.mark.parametrize(
+    "prefix,delimiter,key",
+    [
+        ("my/test/pre/", "/", "my/test/prefix/my_test_file"),
+        ("my:test:pre:", ":", "my:test:prefix:my_test_file"),
+    ],
+)
+def test_rolling_up_object_key_with_invalid_prefix(prefix, delimiter, key):
+    with pytest.raises(PrefixDoesNotExistError):
+        s3.rollup_object_key_by_prefix(key=key, delimiter=delimiter, prefix=prefix)

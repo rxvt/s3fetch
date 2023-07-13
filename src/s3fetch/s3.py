@@ -9,7 +9,12 @@ from typing import Generator, Optional
 from botocore.exceptions import ClientError
 from mypy_boto3_s3.client import S3Client
 
-from s3fetch.exceptions import InvalidCredentialsError, PermissionError, RegexError
+from s3fetch.exceptions import (
+    InvalidCredentialsError,
+    PermissionError,
+    PrefixDoesNotExistError,
+    RegexError,
+)
 
 from .exceptions import S3FetchQueueEmpty
 
@@ -271,3 +276,33 @@ def shutdown_download_threads(executor: ThreadPoolExecutor) -> None:
     """
     logger.debug("Shutting down download threads")
     executor.shutdown(wait=False)
+
+
+def rollup_object_key_by_prefix(prefix: str, delimiter: str, key: str) -> str:
+    """Rollup the object key to the nearest delimiter by the prefix.
+
+    For example, if the prefix is `my/test/objects/` and the delimiter is `/` and the
+    object key is `my/test/objects/one/mytestobject/one` then the object key will be
+    rolled up to `one/mytestobject/one`.
+
+    Args:
+        prefix (str): Object key prefix.
+        delimiter (str): Object key delimiter.
+        key (str): Object key.
+
+    Raises:
+        PrefixDoesNotExistError: Raised when the prefix does not exist in the object
+            key.
+
+    Returns:
+        str: Object key rolled up to the nearest delimiter by the prefix.
+    """
+    if not key.startswith(prefix):
+        raise PrefixDoesNotExistError("Prefix not found in key")
+
+    if prefix == "":
+        return key
+
+    delimiter_count = prefix.count(delimiter)
+    tmp_key = key.split(delimiter, maxsplit=delimiter_count)[-1]
+    return tmp_key

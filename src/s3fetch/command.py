@@ -253,23 +253,17 @@ class S3Fetch:
             use_threads=True,
             max_concurrency=MAX_S3TRANSFER_CONCURRENCY,
         )
-        try:
-            if not self._dry_run:
-                self.client.download_file(
-                    Bucket=self._bucket,
-                    Key=key,
-                    Filename=str(absolute_dest_filename),
-                    Callback=self._download_callback,
-                    Config=s3transfer_config,
-                )
-        except PermissionError as e:
-            tprint(f"{key}...error", self._print_lock, self._quiet)
-            raise S3FetchPermissionError(
-                f"Permission error when attempting to write object to {absolute_dest_filename}"
-            ) from e
-        else:
-            if not self._exit_requested.is_set():
-                tprint(f"{key}...done", self._print_lock, self._quiet)
+
+        s3.download_object(
+            client=self.client,
+            config=s3transfer_config,
+            bucket=self._bucket,
+            key=key,
+            dest_filename=str(absolute_dest_filename),
+            exit_event=self._exit_requested,
+            print_lock=self._print_lock,
+            quiet=self._quiet,
+        )
 
     def _download_callback(self, chunk):
         """boto3 callback, called whenever boto3 finishes downloading a chunk of an S3 object.

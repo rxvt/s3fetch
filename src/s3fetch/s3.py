@@ -4,9 +4,10 @@ import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
-from typing import Generator, Optional, Tuple
+from typing import Callable, Generator, Optional, Tuple
 
 import boto3
+from boto3.s3.transfer import TransferConfig
 from botocore.exceptions import ClientError
 from mypy_boto3_s3.client import S3Client
 
@@ -17,6 +18,7 @@ from s3fetch.exceptions import (
     RegexError,
 )
 
+from . import utils
 from .exceptions import S3FetchQueueEmpty
 
 logger = logging.getLogger(__name__)
@@ -332,7 +334,7 @@ def split_object_key_into_dir_and_file(
 def create_s3_transfer_config(
     use_threads: bool = True,
     max_concurrency: int = 10,
-) -> boto3.s3.transfer.TransferConfig:  # type: ignore
+) -> TransferConfig:  # type: ignore
     """Create a boto3.s3.transfer.TransferConfig object.
 
     Args:
@@ -348,3 +350,64 @@ def create_s3_transfer_config(
         max_concurrency=max_concurrency,
     )
     return s3transfer_config
+
+
+def download_object(
+    client: S3Client,
+    bucket: str,
+    key: str,
+    dest_filename: str,
+    exit_event: threading.Event,
+    print_lock: threading.Lock,
+    callback: Optional[Callable] = None,
+    config: Optional[TransferConfig] = None,
+    quiet: bool = False,
+    dry_run: bool = False,
+) -> None:
+    """Download an object from S3.
+
+    Args:
+        client (S3Client): boto3.S3Client object.
+        bucket (str): S3 bucket name.
+        key (str): S3 object key.
+        dest_filename (str): Absolute local destination filename.
+        exit_event (threading.Event): Notify that script to exit.
+        print_lock (threading.Lock): Lock for printing to stdout.
+        callback (Optional[Callable], optional): Callback function called after every X
+            bytes are downloaed. Defaults to None.
+        config (Optional[TransferConfig], optional): S3 TransferConfig object.
+        quiet (bool, optional): Don't print to stdout. Defaults to False.
+        dry_run (bool, optional): Don't download objects. Defaults to False.
+
+    Raises:
+        PermissionError: _description_
+    """
+    if dry_run:
+        return
+
+    extra_kwargs = {}
+
+    if callback:
+        extra_kwargs["Callback"] = callback
+
+    if config:
+        extra_kwargs["Config"] = config
+
+    # TODO: Refactor this try/except block and how exceptions are handled.
+    # TODO: Remove the thread printing from here.
+    try:
+        client.download_file(
+            Bucket=bucket,
+            Key=key,
+            Filename=dest_filename,
+            **extra_kwargs,
+        )
+    except PermissionError as e:
+        utils.tprint(f"{key}...error", print_lock, quiet)
+        raise PermissionError(
+            f"Permission error when attempting to write object to {dest_filename}"
+        ) from e
+    else:
+        if exit_event.is_set():
+            return
+        utils.tprint(f"{key}...done", print_lock, quiet)

@@ -269,3 +269,19 @@ def test_creating_s3_transfer_config(use_threads, max_concurrency):
 def test_s3_transfer_config_raises_exception():
     with pytest.raises(ValueError):
         s3.create_s3_transfer_config(use_threads=True, max_concurrency=0)
+
+
+def test_download_object(s3_client):
+    bucket = "my_bucket"
+    key = "my_test_file"
+    dest_filename = "my_test_file"
+    s3_client.create_bucket(Bucket=bucket)
+    s3_client.put_object(Bucket=bucket, Key=key, Body=b"test data")
+    s3.download_object(
+        client=s3_client,
+        bucket=bucket,
+        key=key,
+        dest_filename=dest_filename,
+        exit_event=threading.Event(),
+        print_lock=threading.Lock(),
+    )

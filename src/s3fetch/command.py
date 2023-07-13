@@ -15,7 +15,7 @@ from .exceptions import NoCredentialsError as S3FetchNoCredentialsError
 from .exceptions import PermissionError as S3FetchPermissionError
 from .exceptions import S3FetchQueueEmpty
 
-from . import s3
+from . import s3, fs
 from .utils import tprint
 
 logging.basicConfig()
@@ -240,18 +240,13 @@ class S3Fetch:
             tmp_dest_filename,
         ) = s3.split_object_key_into_dir_and_file(local_object_key, self._delimiter)
 
-        if tmp_dest_directory:
-            destination_directory = self._download_dir / Path(tmp_dest_directory)
-        else:
-            destination_directory = self._download_dir
+        absolute_dest_dir = fs.create_destination_directory(
+            download_dir=self._download_dir,
+            object_dir=tmp_dest_directory,
+            delimiter=self._delimiter,
+        )
 
-        if not destination_directory.is_dir():
-            try:
-                destination_directory.mkdir(parents=True)
-            except FileExistsError:
-                pass
-
-        destination_filename = destination_directory / Path(tmp_dest_filename)
+        absolute_dest_filename = absolute_dest_dir / tmp_dest_filename
 
         self._logger.debug(f"Downloading s3://{self._bucket}{self._delimiter}{key}")
         s3transfer_config = boto3.s3.transfer.TransferConfig(
@@ -262,14 +257,14 @@ class S3Fetch:
                 self.client.download_file(
                     Bucket=self._bucket,
                     Key=key,
-                    Filename=str(destination_filename),
+                    Filename=str(absolute_dest_filename),
                     Callback=self._download_callback,
                     Config=s3transfer_config,
                 )
         except PermissionError as e:
             tprint(f"{key}...error", self._print_lock, self._quiet)
             raise S3FetchPermissionError(
-                f"Permission error when attempting to write object to {destination_filename}"
+                f"Permission error when attempting to write object to {absolute_dest_filename}"
             ) from e
         else:
             if not self._exit_requested.is_set():

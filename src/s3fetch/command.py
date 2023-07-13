@@ -15,7 +15,7 @@ from .exceptions import NoCredentialsError as S3FetchNoCredentialsError
 from .exceptions import PermissionError as S3FetchPermissionError
 from .exceptions import S3FetchQueueEmpty
 
-from . import s3, fs
+from . import s3, fs, api
 from .utils import tprint
 
 logging.basicConfig()
@@ -156,7 +156,7 @@ class S3Fetch:
         )
 
         try:
-            s3.create_list_objects_thread(
+            api.list_objects(
                 bucket=self._bucket,
                 prefix=self._prefix,
                 client=self.client,

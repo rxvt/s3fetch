@@ -263,6 +263,7 @@ class S3Fetch:
             exit_event=self._exit_requested,
             print_lock=self._print_lock,
             quiet=self._quiet,
+            callback=self._download_callback,
         )
 
     def _download_callback(self, chunk):

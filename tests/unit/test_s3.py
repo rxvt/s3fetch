@@ -271,10 +271,10 @@ def test_s3_transfer_config_raises_exception():
         s3.create_s3_transfer_config(use_threads=True, max_concurrency=0)
 
 
-def test_download_object(s3_client):
+def test_download_object(tmp_path, s3_client):
     bucket = "my_bucket"
     key = "my_test_file"
-    dest_filename = "my_test_file"
+    dest_filename = tmp_path / "my_test_file"
     s3_client.create_bucket(Bucket=bucket)
     s3_client.put_object(Bucket=bucket, Key=key, Body=b"test data")
     s3.download_object(

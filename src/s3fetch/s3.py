@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 from typing import Generator, Optional, Tuple
 
+import boto3
 from botocore.exceptions import ClientError
 from mypy_boto3_s3.client import S3Client
 
@@ -326,3 +327,24 @@ def split_object_key_into_dir_and_file(
         return "", key
     directory, file = key.rsplit(delimiter, maxsplit=1)
     return directory, file
+
+
+def create_s3_transfer_config(
+    use_threads: bool = True,
+    max_concurrency: int = 10,
+) -> boto3.s3.transfer.TransferConfig:  # type: ignore
+    """Create a boto3.s3.transfer.TransferConfig object.
+
+    Args:
+        use_threads (bool, optional): Use threads. Defaults to True.
+        max_concurrency (int, optional): How many threads should be used _per object_
+            download. Defaults to 10.
+
+    Returns:
+        boto3.s3.transfer.TransferConfig: TransferConfig object.
+    """
+    s3transfer_config = boto3.s3.transfer.TransferConfig(  # type: ignore
+        use_threads=use_threads,
+        max_concurrency=max_concurrency,
+    )
+    return s3transfer_config

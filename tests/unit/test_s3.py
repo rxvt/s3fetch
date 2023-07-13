@@ -247,3 +247,20 @@ def test_splitting_object_key_into_local_directory_and_filename(
     )
     assert result_dir == expected_dir
     assert result_filename == expected_filename
+
+
+@pytest.mark.parametrize(
+    "use_threads, max_concurrency",
+    [
+        (True, 10),
+        (True, 99),
+        (False, 1),
+    ],
+)
+def test_creating_s3_transfer_config(use_threads, max_concurrency):
+    result = s3.create_s3_transfer_config(
+        use_threads=use_threads,
+        max_concurrency=max_concurrency,
+    )
+    assert result.max_request_concurrency == max_concurrency
+    assert result.use_threads == use_threads

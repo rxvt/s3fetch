@@ -53,3 +53,9 @@ class S3FetchQueueEmpty(S3FetchError):
     """Raised when the queue is empty."""
 
     pass
+
+
+class PrefixDoesNotExistError(S3FetchError):
+    """Raised when the prefix does not exist."""
+
+    pass

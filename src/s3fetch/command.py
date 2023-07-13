@@ -249,8 +249,9 @@ class S3Fetch:
         absolute_dest_filename = absolute_dest_dir / tmp_dest_filename
 
         self._logger.debug(f"Downloading s3://{self._bucket}{self._delimiter}{key}")
-        s3transfer_config = boto3.s3.transfer.TransferConfig(
-            use_threads=True, max_concurrency=MAX_S3TRANSFER_CONCURRENCY
+        s3transfer_config = s3.create_s3_transfer_config(
+            use_threads=True,
+            max_concurrency=MAX_S3TRANSFER_CONCURRENCY,
         )
         try:
             if not self._dry_run:

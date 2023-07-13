@@ -13,8 +13,7 @@ from botocore.exceptions import NoCredentialsError
 from .exceptions import DirectoryDoesNotExistError, InvalidCredentialsError
 from .exceptions import NoCredentialsError as S3FetchNoCredentialsError
 from .exceptions import PermissionError as S3FetchPermissionError
-from .exceptions import RegexError, S3FetchQueueEmpty
-from .s3 import get_download_queue, shutdown_download_threads, start_listing_objects
+from .exceptions import S3FetchQueueEmpty
 from .utils import tprint
 
 logging.basicConfig()

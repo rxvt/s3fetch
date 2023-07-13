@@ -14,6 +14,8 @@ from .exceptions import DirectoryDoesNotExistError, InvalidCredentialsError
 from .exceptions import NoCredentialsError as S3FetchNoCredentialsError
 from .exceptions import PermissionError as S3FetchPermissionError
 from .exceptions import S3FetchQueueEmpty
+
+from . import s3
 from .utils import tprint
 
 logging.basicConfig()
@@ -101,7 +103,7 @@ class S3Fetch:
         )
 
         self.client = boto3.client("s3", region_name=region, config=client_config)
-        self._object_queue = get_download_queue()  # type: ignore
+        self._object_queue = s3.get_download_queue()  # type: ignore
         self._failed_downloads = []  # type: ignore
         self._successful_downloads = 0
 
@@ -154,7 +156,7 @@ class S3Fetch:
         )
 
         try:
-            start_listing_objects(
+            s3.start_listing_objects(
                 bucket=self._bucket,
                 prefix=self._prefix,
                 client=self.client,
@@ -201,7 +203,7 @@ class S3Fetch:
                     "\nThreads are exiting (this might take a while depending on the amount of threads)...",
                     self._print_lock,
                 )
-                shutdown_download_threads(executor)
+                s3.shutdown_download_threads(executor)
                 raise
 
     def _check_for_failed_downloads(self) -> None:

@@ -264,3 +264,8 @@ def test_creating_s3_transfer_config(use_threads, max_concurrency):
     )
     assert result.max_request_concurrency == max_concurrency
     assert result.use_threads == use_threads
+
+
+def test_s3_transfer_config_raises_exception():
+    with pytest.raises(ValueError):
+        s3.create_s3_transfer_config(use_threads=True, max_concurrency=0)

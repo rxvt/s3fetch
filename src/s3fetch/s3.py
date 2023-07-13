@@ -4,7 +4,7 @@ import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
-from typing import Generator, Optional
+from typing import Generator, Optional, Tuple
 
 from botocore.exceptions import ClientError
 from mypy_boto3_s3.client import S3Client
@@ -306,3 +306,23 @@ def rollup_object_key_by_prefix(prefix: str, delimiter: str, key: str) -> str:
     delimiter_count = prefix.count(delimiter)
     tmp_key = key.split(delimiter, maxsplit=delimiter_count)[-1]
     return tmp_key
+
+
+def split_object_key_into_dir_and_file(
+    key: str, delimiter: str
+) -> Tuple[Optional[str], str]:
+    """Split the object key into directory and file.
+
+    Args:
+        key (str): Object key.
+        delimiter (str): Object key delimiter.
+
+    Returns:
+        tuple: Tuple containing the directory and file. If the delimiter is not found
+            in the object key then the directory will be None and
+            the file will be the entire object key.
+    """
+    if delimiter not in key:
+        return "", key
+    directory, file = key.rsplit(delimiter, maxsplit=1)
+    return directory, file

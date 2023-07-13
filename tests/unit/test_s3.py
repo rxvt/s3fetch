@@ -226,3 +226,24 @@ def test_rolling_up_object_key_with_valid_prefix(
 def test_rolling_up_object_key_with_invalid_prefix(prefix, delimiter, key):
     with pytest.raises(PrefixDoesNotExistError):
         s3.rollup_object_key_by_prefix(key=key, delimiter=delimiter, prefix=prefix)
+
+
+@pytest.mark.parametrize(
+    "key, delimiter, expected_dir, expected_filename",
+    [
+        ("my/test/prefix/my_test_file", "/", "my/test/prefix", "my_test_file"),
+        ("my/test/prefix/my_test_file", ":", "", "my/test/prefix/my_test_file"),
+        ("my:test:prefix:my_test_file", ":", "my:test:prefix", "my_test_file"),
+    ],
+)
+def test_splitting_object_key_into_local_directory_and_filename(
+    key: str,
+    delimiter: str,
+    expected_dir: str,
+    expected_filename: str,
+):
+    result_dir, result_filename = s3.split_object_key_into_dir_and_file(
+        key=key, delimiter=delimiter
+    )
+    assert result_dir == expected_dir
+    assert result_filename == expected_filename

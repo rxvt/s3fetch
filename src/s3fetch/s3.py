@@ -66,7 +66,7 @@ def get_download_queue() -> S3FetchQueue:
     return queue
 
 
-def start_listing_objects(
+def create_list_objects_thread(
     bucket: str,
     prefix: str,
     client: S3Client,

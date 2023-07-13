@@ -156,7 +156,7 @@ class S3Fetch:
         )
 
         try:
-            s3.start_listing_objects(
+            s3.create_list_objects_thread(
                 bucket=self._bucket,
                 prefix=self._prefix,
                 client=self.client,

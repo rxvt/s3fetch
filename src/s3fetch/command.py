@@ -217,38 +217,6 @@ class S3Fetch:
             for key, reason in self._failed_downloads:
                 print(f"{key}: {reason}")
 
-    def _rollup_prefix(self, key: str) -> Tuple[Optional[str], str]:
-        # First roll up everything under the prefix to the right most delimiter, leaving us with the object key
-        # after the rolled up prefix.
-        # Example for prefix of '/example/obj'
-        # /example/objects/obj1
-        # /example/objects/obj2
-        # Result: objects/obj1 & objects/obj2
-        # Determine rollup prefix
-        if self._prefix:
-            # Get prefix up to last delimiter
-            try:
-                rollup_prefix, _ = self._prefix.rsplit(self._delimiter, maxsplit=1)
-            except ValueError:
-                rollup_prefix = None
-        else:
-            rollup_prefix = None
-
-        # Remove prefix from key
-        if rollup_prefix:
-            _, tmp_key = key.rsplit(rollup_prefix + self._delimiter, maxsplit=1)
-        else:
-            tmp_key = key
-
-        # Split object key into directory and filename
-        try:
-            directory, filename = tmp_key.rsplit(self._delimiter, maxsplit=1)
-        except ValueError:
-            directory = None
-            filename = tmp_key
-
-        return directory, filename
-
     def _download_object(self, key: str, exit_event: threading.Event) -> None:
         """Download an object from S3.
 
@@ -263,7 +231,14 @@ class S3Fetch:
             self._logger.debug("Not downloading %s as exit_event is set", key)
             return
 
-        tmp_dest_directory, tmp_dest_filename = self._rollup_prefix(key)
+        local_object_key = s3.rollup_object_key_by_prefix(
+            key=key, delimiter=self._delimiter, prefix=self._prefix
+        )
+
+        (
+            tmp_dest_directory,
+            tmp_dest_filename,
+        ) = s3.split_object_key_into_dir_and_file(local_object_key, self._delimiter)
 
         if tmp_dest_directory:
             destination_directory = self._download_dir / Path(tmp_dest_directory)

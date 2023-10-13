@@ -157,6 +157,30 @@ Download objects ending in `.dmg`.
 s3fetch s3://my-test-bucket/ --regex '\.dmg$'
 ```
 
+### Using as a Python Module in a your own code
+
+```python
+from s3fetch import S3Fetch
+
+# Optional callback for all downloads...
+def download_callback(context: dict[str, Any]) -> None:
+  filename: str = context['filename']
+  status: bool = context['status']
+  print(f"{filename}...{'done' if status else 'failed'}")
+
+try:
+    s3fetch = S3Fetch(
+        s3_uri='s3://<your_bucket>/exports/foo/2023/10/',
+        region='us-east-1',
+        download_dir='output/',
+        threads=100,
+        quiet=True
+    )
+    s3fetch.run(on_download=download_callback)
+except Exception as e:
+    print(e)
+
+
 ## Troubleshooting
 
 ### MacOS hangs when downloading using high number of threads

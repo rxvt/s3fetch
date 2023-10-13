@@ -20,8 +20,12 @@ def test_downloading_single_small_file(bucket_config, tmp_path):
         "region": bucket_config["region"],
         "download_dir": tmp_path,
     }
+
+    def my_handler(context):
+        print(context)
+
     s3fetch = S3Fetch(**config)
-    s3fetch.run()
+    s3fetch.run(on_download=my_handler)
     testfile = Path(tmp_path) / "01_small_test_file"
     assert testfile.is_file()
     file_contents = testfile.read_text()

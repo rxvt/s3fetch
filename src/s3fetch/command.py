@@ -4,7 +4,7 @@ import os
 import re
 import threading
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Callable, Any
 
 import boto3
 import botocore
@@ -146,8 +146,12 @@ class S3Fetch:
         self._logger.debug(f"download_directory={download_directory}")
         return Path(download_directory)
 
-    def run(self) -> None:
-        """Executes listing, filtering and downloading objects from the S3 bucket."""
+    def run(self, on_download: Optional[Callable] = None) -> None:
+        """Executes listing, filtering and downloading objects from the S3 bucket.
+
+        :param on_download: Callback function invoked with context after every download, defaults to None
+        :type delimiter: Callable, optional
+        """
         prefix = f"'{self._prefix}'" if self._prefix else "None"
         tprint(
             f"Listing objects in bucket '{self._bucket}' with prefix: {prefix}",
@@ -165,7 +169,7 @@ class S3Fetch:
                 regex=self._regex,
                 exit_event=self._exit_requested,
             )
-            self._download_objects()
+            self._download_objects(on_download)
             self._check_for_failed_downloads()
         except (NoCredentialsError, InvalidCredentialsError) as e:
             raise S3FetchNoCredentialsError(e) from e
@@ -173,8 +177,12 @@ class S3Fetch:
             self._exit_requested.set()
             raise KeyboardInterrupt
 
-    def _download_objects(self) -> None:
-        """Download objects from the specified S3 bucket and path prefix."""
+    def _download_objects(self, on_download: Optional[Callable] = None) -> None:
+        """Download objects from the specified S3 bucket and path prefix.
+
+        :param on_download: Callback function invoked with context after every download, defaults to None
+        :type delimiter: Callable, optional
+        """
         tprint("Starting downloads...", self._print_lock, self._quiet)
 
         with concurrent.futures.ThreadPoolExecutor(
@@ -186,7 +194,7 @@ class S3Fetch:
                     try:
                         item = self._object_queue.get(block=True)
                         futures[item] = executor.submit(
-                            self._download_object, item, self._exit_requested
+                            self._download_object, item, self._exit_requested, on_download
                         )
                     except S3FetchQueueEmpty:
                         break
@@ -249,12 +257,13 @@ class S3Fetch:
 
         return directory, filename
 
-    def _download_object(self, key: str, exit_event: threading.Event) -> None:
+    def _download_object(self, key: str, exit_event: threading.Event, on_download: Optional[Callable] = None) -> None:
         """Download an object from S3.
 
         Args:
             key (str): S3 object key.
             exit_event (threading.Event): Notify the script to exit.
+            on_download (Callable): Optional callback invoked with context after every download
 
         Raises:
             S3FetchPermissionError: _description_
@@ -276,12 +285,28 @@ class S3Fetch:
             except FileExistsError:
                 pass
 
-        destination_filename = destination_directory / Path(tmp_dest_filename)
+        destination_filename = os.path.join(destination_directory, Path(tmp_dest_filename))
 
-        self._logger.debug(f"Downloading s3://{self._bucket}{self._delimiter}{key}")
+        s3_uri: str = f"s3://{self._bucket}{self._delimiter}{key}"
+        self._logger.debug(f"Downloading {s3_uri}")
         s3transfer_config = boto3.s3.transfer.TransferConfig(
             use_threads=True, max_concurrency=MAX_S3TRANSFER_CONCURRENCY
         )
+
+        file_size: int = 0
+        file_lock = threading.Lock()
+        def _download_callback(chunk):
+            """boto3 callback, called whenever boto3 finishes downloading a chunk of an S3 object.
+
+            :raises SystemExit: Raised if KeyboardInterrupt is raised in the main thread.
+            """
+            nonlocal file_size, file_lock
+            with file_lock:
+                file_size += chunk
+            if self._exit_requested.is_set():
+                self._logger.debug("Main thread is exiting, cancelling download thread")
+                raise SystemExit(1)
+
         try:
             if not self._dry_run:
                 self.client.download_file(
@@ -291,6 +316,19 @@ class S3Fetch:
                     Callback=self._download_callback,
                     Config=s3transfer_config,
                 )
+                if on_download is not None:
+                    try:
+                        download_context: dict[str, Any] = {
+                            "key": key,
+                            "uri": s3_uri,
+                            "size": file_size,
+                            "filename": destination_filename,
+                            "status": True
+                        }
+                        on_download(download_context)
+                    except Exception as ex:
+                        self._logger.debug(f"Error invoking download callback for {key}")
+                        self._logger.debug(ex)
         except PermissionError as e:
             tprint(f"{key}...error", self._print_lock, self._quiet)
             raise S3FetchPermissionError(

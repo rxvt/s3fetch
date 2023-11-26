@@ -53,3 +53,7 @@
 #     assert testfile.is_file()
 #     file_contents = testfile.read_text()
 #     assert file_contents == "This is the first test file.\n"
+
+
+def test_dummy_test():
+    assert True

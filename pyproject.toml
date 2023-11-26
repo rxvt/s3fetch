@@ -19,7 +19,7 @@ boto3-stubs = {extras = ["s3"], version = "^1.26.68"}
 [tool.poetry.group.dev.dependencies]
 black = "^22.3.0"
 nox = "^2022.11.21"
-nox-poetry = "^1.0.2"
+nox-poetry = "^1.0.3"
 pytest = "^7.2"
 pytest-cov = "^4.0.0"
 pytest-mock = "^3.3.1"

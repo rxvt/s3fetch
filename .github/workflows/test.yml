@@ -21,7 +21,7 @@ jobs:
       - name: Setup Poetry
         uses: Gr1N/setup-poetry@v8
       - name: Cache Poetry Dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pypoetry/virtualenvs
           key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}

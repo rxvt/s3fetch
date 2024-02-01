@@ -28,7 +28,7 @@ moto = {extras = ["s3"], version = "^4.1.3"}
 coverage = {extras = ["toml"], version = "^6.4.1"}
 types-setuptools = "^57.4.18"
 safety = "^2.1.1"
-ruff = "^0.0.272"
+ruff = "^0.1.15"
 pre-commit = "^3.3.3"
 
 [tool.poetry.scripts]

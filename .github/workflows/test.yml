@@ -13,9 +13,9 @@ jobs:
         python: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
       - name: Setup Poetry
@@ -30,7 +30,7 @@ jobs:
       - name: Poetry Install
         run: poetry install
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1-node16
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::935355401814:role/s3fetch-e2e-test-bot
           aws-region: us-east-2

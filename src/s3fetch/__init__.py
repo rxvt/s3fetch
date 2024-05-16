@@ -1,3 +1,3 @@
-import importlib.metadata
+__version__ = "2.0.0"
 
-__version__ = importlib.metadata.version("s3fetch")
+MAX_S3TRANSFER_CONCURRENCY = 10

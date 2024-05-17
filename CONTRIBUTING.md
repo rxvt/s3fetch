@@ -27,6 +27,14 @@ This is an alternative (more manual) way to setup your development environment u
     $ python -m pip install -r requirements/requirements-dev.txt
     ```
 
+# Install pre-commit hooks
+
+Inside your virtual environment, run the following command:
+
+```
+$ pre-commit install
+```
+
 # Running tests via Hatch
 
 Coming soon...

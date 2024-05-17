@@ -3,38 +3,30 @@
 #
 # - black==24.4.2
 # - pytest==8.2.0
-# - pytest-cov==4.0.0
 # - pytest-mock==3.1.1
-# - mypy==0.931
 # - moto[s3]==5.0.7
-# - nox==2022.11.21
-# - coverage[toml]==6.4.1
-# - safety==2.1.1
-# - ruff==0.1.15
+# - ruff==0.4.4
 # - pre-commit==3.3.3
-# - boto3-stubs[s3]~=1.26.0
-# - boto3==1.34.103
-# - botocore-stubs~=1.24.0
-# - click==8.0.2
-# - urllib3==1.26.8
+# - boto3-stubs[s3]==1.34.107
+# - boto3==1.34.107
+# - botocore-stubs==1.34.94
+# - click==8.1.7
 #
 
-argcomplete==2.1.2
-    # via nox
 black==24.4.2
     # via hatch.envs.default
-boto3==1.34.103
+boto3==1.34.107
     # via
     #   hatch.envs.default
     #   moto
-boto3-stubs==1.26.165
+boto3-stubs==1.34.107
     # via hatch.envs.default
-botocore==1.34.106
+botocore==1.34.107
     # via
     #   boto3
     #   moto
     #   s3transfer
-botocore-stubs==1.24.46
+botocore-stubs==1.34.94
     # via
     #   hatch.envs.default
     #   boto3-stubs
@@ -46,23 +38,14 @@ cfgv==3.4.0
     # via pre-commit
 charset-normalizer==3.3.2
     # via requests
-click==8.0.2
+click==8.1.7
     # via
     #   hatch.envs.default
     #   black
-    #   safety
-colorlog==6.8.2
-    # via nox
-coverage==6.4.1
-    # via
-    #   hatch.envs.default
-    #   pytest-cov
 cryptography==42.0.7
     # via moto
 distlib==0.3.8
     # via virtualenv
-dparse==0.6.3
-    # via safety
 exceptiongroup==1.2.1
     # via pytest
 filelock==3.14.0
@@ -85,25 +68,16 @@ markupsafe==2.1.5
     #   werkzeug
 moto==5.0.7
     # via hatch.envs.default
-mypy==0.931
-    # via hatch.envs.default
-mypy-boto3-s3==1.26.163
+mypy-boto3-s3==1.34.105
     # via boto3-stubs
 mypy-extensions==1.0.0
-    # via
-    #   black
-    #   mypy
+    # via black
 nodeenv==1.8.0
     # via pre-commit
-nox==2022.11.21
-    # via hatch.envs.default
 packaging==24.0
     # via
     #   black
-    #   dparse
-    #   nox
     #   pytest
-    #   safety
 pathspec==0.12.1
     # via black
 platformdirs==4.2.2
@@ -121,10 +95,7 @@ pycparser==2.22
 pytest==8.2.0
     # via
     #   hatch.envs.default
-    #   pytest-cov
     #   pytest-mock
-pytest-cov==4.0.0
-    # via hatch.envs.default
 pytest-mock==3.1.1
     # via hatch.envs.default
 python-dateutil==2.9.0.post0
@@ -140,45 +111,34 @@ requests==2.31.0
     # via
     #   moto
     #   responses
-    #   safety
 responses==0.25.0
     # via moto
-ruamel-yaml==0.18.6
-    # via safety
-ruamel-yaml-clib==0.2.8
-    # via ruamel-yaml
-ruff==0.1.15
+ruff==0.4.4
     # via hatch.envs.default
 s3transfer==0.10.1
     # via boto3
-safety==2.1.1
-    # via hatch.envs.default
 six==1.16.0
     # via python-dateutil
 tomli==2.0.1
     # via
     #   black
-    #   coverage
-    #   dparse
-    #   mypy
     #   pytest
+types-awscrt==0.20.9
+    # via botocore-stubs
 types-s3transfer==0.10.1
     # via boto3-stubs
 typing-extensions==4.11.0
     # via
     #   black
-    #   botocore-stubs
-    #   mypy
+    #   boto3-stubs
+    #   mypy-boto3-s3
 urllib3==1.26.8
     # via
-    #   hatch.envs.default
     #   botocore
     #   requests
     #   responses
 virtualenv==20.26.2
-    # via
-    #   nox
-    #   pre-commit
+    # via pre-commit
 werkzeug==3.0.3
     # via moto
 xmltodict==0.13.0

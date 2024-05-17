@@ -11,6 +11,7 @@
 # - boto3==1.34.107
 # - botocore-stubs==1.34.94
 # - click==8.1.7
+# - urllib3~=1.26.18
 #
 
 black==24.4.2
@@ -132,8 +133,9 @@ typing-extensions==4.11.0
     #   black
     #   boto3-stubs
     #   mypy-boto3-s3
-urllib3==1.26.8
+urllib3==1.26.18
     # via
+    #   hatch.envs.default
     #   botocore
     #   requests
     #   responses

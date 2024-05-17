@@ -3,7 +3,7 @@ from typing import Generator
 
 import boto3
 import pytest
-from moto import mock_s3
+from moto import mock_aws
 
 
 @pytest.fixture(scope="package", autouse=True)
@@ -19,6 +19,6 @@ def aws_credentials() -> None:
 @pytest.fixture()
 def s3_client(scope="package") -> Generator:  # noqa: ANN001
     """Return a mock S3Client object."""
-    with mock_s3():
+    with mock_aws():
         client = boto3.client("s3", region_name="us-east-1")
         yield client

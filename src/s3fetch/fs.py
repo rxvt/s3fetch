@@ -1,4 +1,5 @@
 """Filesystem utilities for S3Fetch."""
+
 from pathlib import Path
 from typing import Optional
 

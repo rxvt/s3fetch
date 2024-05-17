@@ -1,4 +1,5 @@
 """Misc utilities for S3Fetch."""
+
 from threading import Lock
 
 import click

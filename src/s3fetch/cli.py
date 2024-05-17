@@ -1,4 +1,5 @@
 """Command line interface for S3Fetch."""
+
 import sys
 
 import click

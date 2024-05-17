@@ -1,4 +1,5 @@
 """API for S3Fetch."""
+
 import threading
 from typing import Optional
 

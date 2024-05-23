@@ -13,6 +13,7 @@
 # - boto3==1.34.107
 # - botocore-stubs==1.34.94
 # - click==8.1.7
+# - urllib3~=1.26.18
 #
 
 annotated-types==0.6.0
@@ -170,8 +171,9 @@ typing-extensions==4.11.0
     #   safety
     #   safety-schemas
     #   typer
-urllib3==1.26.8
+urllib3==1.26.18
     # via
+    #   hatch.envs.test.py3.11
     #   botocore
     #   requests
     #   responses

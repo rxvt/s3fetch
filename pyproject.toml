@@ -34,6 +34,7 @@ General development environment.
 """
 type = "pip-compile"
 python = "3.9"
+python-sources = ['internal']
 extra-dependencies = [
   "black~=24.4",
   "pytest~=8.2",
@@ -46,6 +47,7 @@ extra-dependencies = [
 [tool.hatch.envs.hatch-test]
 description = """Testing environment."""
 type = "pip-compile"
+python-sources = ['internal']
 extra-dependencies = [
   "moto[s3]~=5.0",
   "pytest~=8.2",

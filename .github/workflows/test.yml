@@ -20,9 +20,5 @@ jobs:
       #   with:
       #     role-to-assume: arn:aws:iam::935355401814:role/s3fetch-e2e-test-bot
       #     aws-region: us-east-2
-      - name: Run Unit Tests
-        run: hatch run test:test_unit
-      - name: Run Integration Tests
-        run: hatch run test:test_integration
-      # - name: Run E2E Tests
-      #   run: hatch run test:test_e2e
+      - name: Run Tests
+        run: hatch test -a

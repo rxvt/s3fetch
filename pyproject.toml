@@ -59,12 +59,7 @@ extra-dependencies = [
   "mypy~=0.931",
 ]
 
-[tool.hatch.envs.test.scripts]
-test_unit = "pytest tests/unit"
-test_integration = "pytest tests/integration"
-test_e2e = "pytest tests/e2e"
-
-[[tool.hatch.envs.test.matrix]]
+[[tool.hatch.envs.hatch-test.matrix]]
 python = ["3.12", "3.11", "3.10", "3.9"]
 
 [tool.hatch.envs.default.scripts]

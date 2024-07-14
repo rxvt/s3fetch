@@ -13,5 +13,5 @@ git config --global --unset gpg.ssh.program
 
 # The following commands can't be run during the docker build process as the source directory is not mounted yet,
 # so we run them in the postCreateCommand instead.
-pre-commit install
+pre-commit install --install-hooks
 hatch shell

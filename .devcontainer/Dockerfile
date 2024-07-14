@@ -27,4 +27,4 @@ RUN hatch python install 3.9
 RUN hatch python install 3.10
 RUN hatch python install 3.11
 RUN hatch python install 3.12
-RUN pipx install pre-commit
+# RUN pipx install pre-commit

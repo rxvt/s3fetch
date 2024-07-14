@@ -4,10 +4,6 @@
 ARG VARIANT="3.11-bullseye"
 FROM mcr.microsoft.com/vscode/devcontainers/python:0-${VARIANT}
 
-ENV PYTHON_39=3.9.12
-ENV PYTHON_310=3.10.4
-ENV PYTHON_311=3.11.1
-
 # [Choice] Node.js version: none, lts/*, 16, 14, 12, 10
 ARG NODE_VERSION="none"
 RUN if [ "${NODE_VERSION}" != "none" ]; then su vscode -c "umask 0002 && . /usr/local/share/nvm/nvm.sh && nvm install ${NODE_VERSION} 2>&1"; fi
@@ -25,15 +21,10 @@ RUN if [ "${NODE_VERSION}" != "none" ]; then su vscode -c "umask 0002 && . /usr/
 # RUN su vscode -c "source /usr/local/share/nvm/nvm.sh && npm install -g <your-package-here>" 2>&1
 
 USER vscode
-RUN git clone https://github.com/pyenv/pyenv.git ~/.pyenv \
-    && echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.profile \
-    && echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.profile \
-    && echo 'eval "$(pyenv init --path)"' >> ~/.profile \
-    && echo 'if command -v pyenv >/dev/null; then eval "$(pyenv init -)"; fi' >> ~/.bashrc
-RUN $HOME/.pyenv/bin/pyenv install --skip-existing $PYTHON_39
-RUN $HOME/.pyenv/bin/pyenv install --skip-existing $PYTHON_310
-RUN $HOME/.pyenv/bin/pyenv install --skip-existing $PYTHON_311
-RUN $HOME/.pyenv/bin/pyenv global $PYTHON_38
-RUN curl -sSL https://install.python-poetry.org | python3 -
-RUN $HOME/.local/bin/poetry config virtualenvs.prefer-active-python true
-RUN $HOME/.local/bin/poetry config virtualenvs.in-project true
+RUN python -m pip install pipx
+RUN pipx install hatch
+RUN hatch python install 3.9
+RUN hatch python install 3.10
+RUN hatch python install 3.11
+RUN hatch python install 3.12
+RUN pipx install pre-commit

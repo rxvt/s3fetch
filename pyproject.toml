@@ -40,6 +40,7 @@ extra-dependencies = [
   "moto[s3]~=5.0.0",
   "ruff",
   "pre-commit~=3.7.0",
+  "mypy",
 ]
 
 [tool.hatch.envs.hatch-test]

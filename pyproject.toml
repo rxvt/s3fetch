@@ -50,7 +50,6 @@ extra-dependencies = [
   "moto[s3]~=5.0.0",
   "pytest~=8.2.0",
   "pytest-mock~=3.12.0",
-  "safety",
   "coverage[toml]~=7.5.0",
   "mypy",
 ]
@@ -59,7 +58,7 @@ extra-dependencies = [
 python = ["3.12", "3.11", "3.10", "3.9"]
 
 [tool.hatch.envs.default.scripts]
-check = "mypy --install-types --non-interactive {args:src/s3fetch tests}"
+check_types = "mypy --install-types --non-interactive {args:src/s3fetch tests}"
 test_unit = "pytest tests/unit"
 test_integration = "pytest tests/integration"
 test_e2e = "pytest tests/e2e"

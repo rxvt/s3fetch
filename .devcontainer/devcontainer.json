@@ -42,9 +42,6 @@
 	// "postCreateCommand": "pip3 install --user -r requirements.txt",
 	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode",
-	// The poetry commands can't be run during the docker build process as the source directory is not mounted yet.
-	// The pyenv command gets a permission error I haven't investigated yet.
-	"postCreateCommand": "bash ./.devcontainer/post_create.sh",
 	"features": {
 		"ghcr.io/devcontainers/features/aws-cli:1": {
 			"version": "latest"

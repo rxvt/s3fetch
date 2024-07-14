@@ -50,7 +50,6 @@ extra-dependencies = [
   "moto[s3]~=5.0.0",
   "pytest~=8.2.0",
   "pytest-mock~=3.12.0",
-  "mypy",
 ]
 
 [[tool.hatch.envs.hatch-test.matrix]]

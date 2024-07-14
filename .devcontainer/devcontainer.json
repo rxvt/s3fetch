@@ -28,13 +28,15 @@
 			"python.linting.pydocstyleEnabled": false,
 			"python.linting.flake8Path": "flake8"
 		},
-		// Add the IDs of extensions you want installed when the container is created.
-		"extensions": [
-			"ms-python.vscode-pylance",
-			"ms-python.python",
-			"bungcip.better-toml",
-			"njpwerner.autodocstring"
-		]
+		"vscode": {
+			// Add the IDs of extensions you want installed when the container is created.
+			"extensions": [
+				"ms-python.vscode-pylance",
+				"ms-python.python",
+				"njpwerner.autodocstring",
+				"tamasfe.even-better-toml"
+			]
+		}
 	},
 	"containerEnv": {
 		"CONTAINER_WORKSPACE_FOLDER": "${containerWorkspaceFolder}"

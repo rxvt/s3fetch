@@ -36,6 +36,9 @@
 			"njpwerner.autodocstring"
 		]
 	},
+	"containerEnv": {
+		"CONTAINER_WORKSPACE_FOLDER": "${containerWorkspaceFolder}"
+	},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	// Use 'postCreateCommand' to run commands after the container is created.

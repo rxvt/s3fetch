@@ -48,4 +48,20 @@ $ pre-commit install
 
 # Running tests via Hatch
 
-Coming soon...
+Run tests in default testing env.
+
+```bash
+$ hatch test
+```
+
+Run tests across all testing environments.
+
+```bash
+$ hatch test -a
+```
+
+Run coverage report.
+
+```bash
+$ hatch test --cover
+```

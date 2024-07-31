@@ -34,7 +34,6 @@ General development environment.
 type = "pip-compile"
 python = "3.9"
 extra-dependencies = [
-  "black",
   "pytest~=8.2.0",
   "pytest-mock~=3.12.0",
   "moto[s3]~=5.0.0",

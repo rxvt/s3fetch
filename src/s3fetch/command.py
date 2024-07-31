@@ -94,7 +94,10 @@ class S3Fetch:
         # https://stackoverflow.com/questions/53765366/urllib3-connectionpool-connection-pool-is-full-discarding-connection
         # https://github.com/boto/botocore/issues/619#issuecomment-461859685
         # max_pool_connections here is passed to the max_size param of urllib3.HTTPConnectionPool()
-        connection_pool_connections = max(MAX_POOL_CONNECTIONS, self._threads * MAX_S3TRANSFER_CONCURRENCY)  # type: ignore
+        connection_pool_connections = max(
+            MAX_POOL_CONNECTIONS,
+            self._threads * MAX_S3TRANSFER_CONCURRENCY,  # type: ignore
+        )
         self._logger.debug(
             f"Setting urllib3 ConnectionPool(maxsize={connection_pool_connections})"
         )

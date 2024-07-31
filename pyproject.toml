@@ -95,6 +95,9 @@ module = ["s3fetch", "pkg_resources"]
 ignore_missing_imports = true
 
 [tool.ruff]
+target-version = "py39"
+
+[tool.ruff.lint]
 select = [
     # ANN Enable flake8-annotations warnings
     # B, B9 Enable flake8-bugbear. B9 is required for Bugbear’s more opinionated warnings.
@@ -115,18 +118,17 @@ select = [
     "I",
     "S"
 ]
-target-version = "py39"
 ignore = [
     "ANN204", # Ignore return type annotation for special methods
     "ANN101", #Ignore missing type annotation for self in method
     ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 # Use Google-style docstrings.
 convention = "google"
 
 # Ignore `E402` (import violations) in all `__init__.py` files, and in `path/to/file.py`.
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["D104"]
 "tests/unit/test_s3fetch_old.py" = ["ALL"]  # Remove after all tests migrated
 "tests/*" = [

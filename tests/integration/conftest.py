@@ -1,4 +1,5 @@
 """S3Fetch conftest."""
+
 import os
 
 import pytest

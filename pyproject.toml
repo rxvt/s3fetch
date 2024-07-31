@@ -139,6 +139,3 @@ convention = "google"
     "S101"  # Ignore use of 'assert'
     ]
 "src/s3fetch/command.py" = ["ALL"]  # TODO: Remove after refactor is finished.
-
-[tool.isort]
-profile = "black"

@@ -37,7 +37,6 @@ extra-dependencies = [
   "pytest~=8.2.0",
   "pytest-mock~=3.12.0",
   "moto[s3]~=5.0.0",
-  "ruff",
   "pre-commit~=3.7.0",
   "mypy",
 ]

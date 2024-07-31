@@ -30,12 +30,7 @@
 		},
 		"vscode": {
 			// Add the IDs of extensions you want installed when the container is created.
-			"extensions": [
-				"ms-python.vscode-pylance",
-				"ms-python.python",
-				"njpwerner.autodocstring",
-				"tamasfe.even-better-toml"
-			]
+			"extensions": []
 		}
 	},
 	"containerEnv": {

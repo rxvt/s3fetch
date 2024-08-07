@@ -142,3 +142,7 @@ dmypy.json
 TODO.md
 
 .ruff_cache
+
+# Test data
+scripts/largefile.txt
+scripts/smallfile.txt

@@ -3,6 +3,8 @@
 from pathlib import Path
 from typing import Optional
 
+from .exceptions import DirectoryDoesNotExistError
+
 
 def create_destination_directory(
     download_dir: Path,
@@ -33,3 +35,18 @@ def create_destination_directory(
 
     absolute_directory.mkdir(parents=True, exist_ok=True)
     return absolute_directory
+
+
+def check_download_dir_exists(download_dir: Path) -> None:
+    """Check if the download directory exists.
+
+    Args:
+        download_dir (Path): Download directory, e.g. /tmp.
+
+    Raises:
+        DirectoryDoesNotExistError: If the download directory does not exist.
+    """
+    if not download_dir.is_dir():
+        raise DirectoryDoesNotExistError(
+            f"The directory '{download_dir}' does not exist."
+        )

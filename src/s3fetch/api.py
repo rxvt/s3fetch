@@ -1,7 +1,8 @@
 """Public API for S3Fetch."""
 
 import threading
-from typing import Optional
+from pathlib import Path
+from typing import Callable, Optional, Tuple
 
 from mypy_boto3_s3.client import S3Client
 
@@ -42,3 +43,52 @@ def list_objects(
         regex=regex,
         exit_event=exit_event,
     )
+
+
+def download_objects(
+    client: S3Client,
+    threads: int,
+    download_queue: S3FetchQueue,
+    completed_queue: S3FetchQueue,
+    exit_event: threading.Event,
+    bucket: str,
+    prefix: str,
+    download_dir: Path,
+    delimiter: str,
+    download_config: dict,
+    callback: Callable,
+) -> Tuple[int, list]:
+    """Download objects from S3 bucket.
+
+    Args:
+        client (S3Client): S3 client, e.g. boto3.client("s3").
+        threads (int): Number of threads to use.
+        download_queue (S3FetchQueue): Download queue.
+        completed_queue (S3FetchQueue): Completed download queue.
+        exit_event (threading.Event): Notify that script to exit.
+        bucket (str): S3 bucket name, e.g. my-bucket.
+        prefix (str): S3 object key prefix, e.g. my-folder/.
+        download_dir (Path): Destination directory, e.g. /tmp.
+        delimiter (str): S3 object key delimiter.
+        download_config (dict): Download configuration.
+        callback (Callable): Callback function.
+
+    Returns:
+        Tuple[int, list]: Number of successful downloads and list of failed downloads.
+    """
+    stats = s3.create_download_threads(
+        client=client,
+        threads=threads,
+        download_queue=download_queue,
+        completed_queue=completed_queue,
+        exit_event=exit_event,
+        bucket=bucket,
+        prefix=prefix,
+        download_dir=download_dir,
+        delimiter=delimiter,
+        download_config=download_config,
+        callback=callback,
+    )
+
+    success, failures = stats
+    return success, failures

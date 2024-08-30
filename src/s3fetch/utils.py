@@ -1,19 +1,76 @@
-"""Misc utilities for S3Fetch."""
+"""Misc utilities."""
 
+import logging
+import os
+from pathlib import Path
 from threading import Lock
+from typing import Optional
 
 import click
 
+from . import fs
 
-def tprint(msg: str, lock: Lock, quiet: bool = False) -> None:
-    """Thread safe print function.
+logger = logging.getLogger(__name__)
+
+
+# def tprint(msg: str, lock: Lock, quiet: bool = False) -> None:
+#     """Thread safe print function.
+
+#     Args:
+#         msg (str): Message to print.
+#         lock (Lock): Lock object.
+#         quiet (bool, optional): Quiet mode enabled. Defaults to False.
+#     """
+#     lock.acquire(timeout=1)
+#     if not quiet:
+#         click.echo(msg)
+#     lock.release()
+
+
+def set_download_dir(download_dir: Optional[Path]) -> Path:
+    """Set the download directory.
 
     Args:
-        msg (str): Message to print.
-        lock (Lock): Lock object.
-        quiet (bool, optional): Quiet mode enabled. Defaults to False.
+        download_dir (Optional[Path]): Download directory, e,g. /tmp. Defaults to None.
+
+    Returns:
+        Path: Download directory.
     """
-    lock.acquire(timeout=1)
-    if not quiet:
-        click.echo(msg)
-    lock.release()
+    if not download_dir:
+        download_dir = Path(os.getcwd())
+
+    fs.check_download_dir_exists(download_dir)
+
+    logger.debug(f"download_dir={download_dir}")
+    return download_dir
+
+
+def get_available_threads() -> int:
+    """Get the number of available threads.
+
+    Returns:
+        int: Number of available threads.
+    """
+    # os.sched_getaffinity() is not available on MacOS so default back to
+    # os.cpu_count()
+    try:
+        threads = len(os.sched_getaffinity(0))
+    except AttributeError:
+        logger.debug("os.sched_getaffinity() not available, using os.cpu_count()")
+        threads = os.cpu_count()
+
+    if not threads:
+        logger.debug("threads not available, defaulting to 1")
+        threads = 1
+
+    logger.debug(f"threads available: {threads}")
+    return threads
+
+
+def fake_callback(chunk: bytes) -> None:
+    """A fake callback placeholder until I make the real one.
+
+    Args:
+        chunk (bytes): Chunk of data.
+    """
+    logger.warning("Fake callback called, this should not happen.")

@@ -1,11 +1,12 @@
 """Command line interface for S3Fetch."""
 
 import sys
+from pathlib import Path
 
 import click
 from botocore.exceptions import ClientError
 
-from .command import S3Fetch
+from . import api, aws, s3, utils
 from .exceptions import S3FetchError
 
 
@@ -21,7 +22,7 @@ from .exceptions import S3FetchError
 @click.option("-d", "--debug", is_flag=True, help="Enable debug output.")
 @click.option(
     "--download-dir",
-    type=str,
+    type=Path,
     help="Download directory. Defaults to current directory.",
 )
 @click.option(
@@ -48,7 +49,7 @@ def cli(
     s3_uri: str,
     region: str,
     debug: bool,
-    download_dir: str,
+    download_dir: Path,
     regex: str,
     threads: int,
     dry_run: bool,
@@ -65,19 +66,52 @@ def cli(
 
     You can download all objects in a bucket by using `s3fetch s3://my-test-bucket/`
     """
+    download_dir = utils.set_download_dir(download_dir)
+    bucket, prefix = s3.split_uri_into_bucket_and_prefix(s3_uri, delimiter)
+
+    if not threads:
+        threads = utils.get_available_threads()
+
+    conn_pool_size = aws.calc_connection_pool_size(
+        threads,
+        s3.DEFAULT_S3TRANSFER_CONCURRENCY,
+    )
+    download_queue = api.S3FetchQueue()
+    completed_queue = api.S3FetchQueue()
+
+    # Boto3 client is generally thread safe.
+    # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/clients.html#multithreading-or-multiprocessing-with-clients
+    client = aws.get_client(region, conn_pool_size)
+
     try:
-        s3fetch = S3Fetch(
-            s3_uri=s3_uri,
-            region=region,
-            debug=debug,
-            download_dir=download_dir,
-            regex=regex,
-            threads=threads,
-            dry_run=dry_run,
-            delimiter=delimiter,
-            quiet=quiet,
+        api.list_objects(
+            client=client,
+            download_queue=download_queue,
+            bucket=bucket,
+            prefix=prefix,
+            delimiter="/",
+            regex=None,
+            exit_event=exit_event,
         )
-        s3fetch.run()
+
+        # Needs to be passed to client.download_file()
+        download_chunk_callback = utils.fake_callback  # TODO: Fix
+        file_downloaded_callback = utils.fake_callback  # TODO: Fix
+        download_config = s3.create_download_config(download_chunk_callback)
+
+        api.download_objects(
+            client=client,
+            threads=threads,
+            download_queue=download_queue,
+            completed_queue=completed_queue,
+            exit_event=exit_event,
+            bucket=bucket,
+            prefix=prefix,
+            download_dir=dest_dir,
+            delimiter=delimiter,
+            download_config=download_config,
+            callback=file_downloaded_callback,
+        )
     except KeyboardInterrupt:
         pass
     except ClientError as e:

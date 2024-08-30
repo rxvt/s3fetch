@@ -1,9 +1,10 @@
-"""S3 functions and classes."""
+"""This module contains functions to interact with AWS S3."""
 
 import logging
 import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from queue import Queue
 from typing import Callable, Generator, Optional, Tuple
 
@@ -19,10 +20,14 @@ from s3fetch.exceptions import (
     RegexError,
 )
 
-from . import utils
-from .exceptions import S3FetchQueueEmpty
+from . import fs
+from .exceptions import S3FetchQueueClosed, S3FetchQueueEmpty
 
 logger = logging.getLogger(__name__)
+
+# Would be nice to be able to pull this from `s3transfer` package but
+# the default of 10 is specified as a parameter default on the TransferConfig class.
+DEFAULT_S3TRANSFER_CONCURRENCY = 10
 
 
 class S3FetchQueue:
@@ -49,7 +54,7 @@ class S3FetchQueue:
         """
         key = self.queue.get(block=block)
         if key is None:
-            raise S3FetchQueueEmpty  # TODO: Change this to S3FetchQueueClosed
+            raise S3FetchQueueClosed
         return key
 
     def close(self) -> None:
@@ -104,6 +109,90 @@ def create_list_objects_thread(
             "exit_event": exit_event,
         },
     ).start()
+
+
+def create_download_threads(
+    client: S3Client,
+    threads: int,
+    download_queue: S3FetchQueue,
+    completed_queue: S3FetchQueue,
+    exit_event: threading.Event,
+    bucket: str,
+    prefix: str,
+    download_dir: Path,
+    delimiter: str,
+    download_config: dict,
+    callback: Optional[Callable] = None,
+) -> Tuple[int, list]:
+    """Create download threads.
+
+    Args:
+        client (S3Client): S3 client object.
+        threads (int): Number of threads to use for downloading objects.
+        download_queue (S3FetchQueue): Download queue.
+        completed_queue (S3FetchQueue): Completed download queue.
+        exit_event (threading.Event): Notify the script to exit.
+        bucket (str): S3 bucket name, e.g. `my-bucket`.
+        prefix (str): S3 object key prefix, e.g. `my/test/objects/`.
+        download_dir (Path): Download directory, e.g. `~/Downloads`.
+        delimiter (str): S3 object key delimiter, e.g. `/`.
+        download_config (dict): Download configuration.
+        callback (Optional[Callable], optional): Callback function. Defaults to None.
+
+    Returns:
+        Tuple[int, list]: _description_
+    """
+    successful_downloads = 0
+    failed_downloads: list[str] = []
+    with ThreadPoolExecutor(max_workers=threads) as executor:
+        try:
+            futures = {}
+            while True:
+                try:
+                    key = download_queue.get(block=True)
+                    futures[key] = executor.submit(
+                        download,
+                        client=client,
+                        bucket=bucket,
+                        key=key,
+                        exit_event=exit_event,
+                        callback=callback,
+                        delimiter=delimiter,
+                        prefix=prefix,
+                        download_dir=download_dir,
+                        download_config=download_config,
+                        completed_queue=completed_queue,
+                    )
+                except S3FetchQueueEmpty:
+                    break
+
+            successful_downloads, failed_downloads = generate_stats(futures)
+        except KeyboardInterrupt:
+            exit_event.set()
+            shutdown_download_threads(executor)
+            raise
+    return successful_downloads, failed_downloads
+
+
+def generate_stats(futures: dict) -> Tuple[int, list]:
+    """Generate download statistics.
+
+    Args:
+        futures (dict): Dictionary containing the futures objects.
+
+    Returns:
+        Tuple[int, list]: Tuple containing the number of successful downloads and a list
+            of failed downloads.
+    """
+    successful_downloads = 0
+    failed_downloads = []
+    for key, future in futures.items():
+        try:
+            future.result()
+            successful_downloads += 1
+        except Exception as e:
+            failed_downloads.append((key, e))
+    return successful_downloads, failed_downloads
 
 
 def list_objects(
@@ -282,6 +371,26 @@ def shutdown_download_threads(executor: ThreadPoolExecutor) -> None:
     executor.shutdown(wait=False)
 
 
+def process_key(key: str, delimiter: str, prefix: str) -> Tuple[Optional[str], str]:
+    """Process the object key.
+
+    Rollup the object key to the nearest delimiter by the prefix and then split the
+    object key into directory and file.
+
+    Args:
+        key (str): S3 object key, e.g. `my/test/objects/one/mytestobject/one`.
+        delimiter (str): Object key delimiter, e.g. `/`.
+        prefix (str): Object key prefix, .e.g. `my/test/objects/`.
+
+    Returns:
+        Tuple[Optional[str], str]: Tuple containing the directory and file.
+    """
+    tmp_key = rollup_object_key_by_prefix(key=key, delimiter=delimiter, prefix=prefix)
+
+    dst_dir, dst_file = split_object_key_into_dir_and_file(tmp_key, delimiter)
+    return dst_dir, dst_file
+
+
 def rollup_object_key_by_prefix(prefix: str, delimiter: str, key: str) -> str:
     """Rollup the object key to the nearest delimiter by the prefix.
 
@@ -307,6 +416,7 @@ def rollup_object_key_by_prefix(prefix: str, delimiter: str, key: str) -> str:
     if prefix == "":
         return key
 
+    # TODO: Can this be made simpler?
     delimiter_count = prefix.count(delimiter)
     tmp_key = key.split(delimiter, maxsplit=delimiter_count)[-1]
     return tmp_key
@@ -353,17 +463,77 @@ def create_s3_transfer_config(
     return s3transfer_config
 
 
+def create_download_config(callback: Optional[Callable]) -> dict:
+    """Create a download configuration.
+
+    Args:
+        callback (Optional[Callable]): Callback function.
+
+    Returns:
+        dict: Download configuration.
+    """
+    extra_kwargs = {}
+
+    transfer_config = create_s3_transfer_config(
+        use_threads=True,
+        max_concurrency=DEFAULT_S3TRANSFER_CONCURRENCY,
+    )
+
+    if callback:
+        extra_kwargs["Callback"] = callback
+    if transfer_config:
+        extra_kwargs["Config"] = transfer_config
+    return extra_kwargs
+
+
 def download_object(
+    key: str,
+    dest_filename: Path,
+    client: S3Client,
+    bucket: str,
+    download_config: dict,
+    completed_queue: S3FetchQueue,
+) -> None:
+    """Download an object from S3.
+
+    Args:
+        key (str): S3 object key, e.g. `my/test/objects/one/mytestobject/one`.
+        dest_filename (Path): Absolute local destination filename, e.g. `/tmp/myfile`.
+        client (S3Client): S3 client object, e.g. `boto3.client("s3")`.
+        bucket (str): S3 bucket name, e.g. `my-bucket`.
+        download_config (dict): Download configuration.
+        completed_queue (S3FetchQueue): Completed download queue.
+
+    Raises:
+        PermissionError: Raised when there is a permission error.
+    """
+    try:
+        client.download_file(
+            Bucket=bucket,
+            Key=key,
+            Filename=str(dest_filename),
+            **download_config,
+        )
+    except PermissionError as e:
+        raise PermissionError(
+            f"Permission error when attempting to write object to {dest_filename}"
+        ) from e
+    else:
+        logger.debug(f"Downloaded {key} to {dest_filename}")
+        completed_queue.put(key)
+
+
+def download(
     client: S3Client,
     bucket: str,
     key: str,
-    dest_filename: str,
     exit_event: threading.Event,
-    print_lock: threading.Lock,
+    delimiter: str,
+    prefix: str,
+    download_dir: Path,
+    download_config: dict,
+    completed_queue: S3FetchQueue,
     callback: Optional[Callable] = None,
-    config: Optional[TransferConfig] = None,
-    quiet: bool = False,
-    dry_run: bool = False,
 ) -> None:
     """Download an object from S3.
 
@@ -373,42 +543,73 @@ def download_object(
         key (str): S3 object key.
         dest_filename (str): Absolute local destination filename.
         exit_event (threading.Event): Notify that script to exit.
-        print_lock (threading.Lock): Lock for printing to stdout.
         callback (Optional[Callable], optional): Callback function called after every X
             bytes are downloaed. Defaults to None.
         config (Optional[TransferConfig], optional): S3 TransferConfig object.
-        quiet (bool, optional): Don't print to stdout. Defaults to False.
-        dry_run (bool, optional): Don't download objects. Defaults to False.
+        download_dir (Path): Download directory, e.g. `~/Downloads`.
+        delimiter (str): S3 object key delimiter, e.g. `/`.
+        prefix (str): S3 object key prefix, e.g. `my/test/objects/`.
+        download_config (dict): Download configuration.
+        completed_queue (S3FetchQueue): Completed download queue.
 
     Raises:
-        PermissionError: _description_
+        PermissionError: Raised when there is a permission error.
     """
-    if dry_run:
+    if exit_event.is_set():
+        logger.debug("Not downloading %s as exit_event is set", key)
         return
 
-    extra_kwargs = {}
+    dst_dir, dst_file = process_key(key=key, prefix=prefix, delimiter=delimiter)
 
-    if callback:
-        extra_kwargs["Callback"] = callback
+    absolute_dest_dir = fs.create_destination_directory(
+        download_dir=download_dir,
+        object_dir=dst_dir,
+        delimiter=delimiter,
+    )
 
-    if config:
-        extra_kwargs["Config"] = config
+    dest_filename = absolute_dest_dir / dst_file
 
-    # TODO: Refactor this try/except block and how exceptions are handled.
-    # TODO: Remove the thread printing from here.
+    logger.debug(f"Downloading s3://{bucket}{delimiter}{key}")
+
+    download_object(
+        key=key,
+        dest_filename=dest_filename,
+        client=client,
+        bucket=bucket,
+        download_config=download_config,
+        completed_queue=completed_queue,
+    )
+
+
+def trim_schema_from_uri(uri: str) -> str:
+    """Trim the schema from the URI.
+
+    s3://my-bucket/my/object -> my-bucket/my/object
+
+    Args:
+        uri (str): S3 URI.
+
+    Returns:
+        str: URI without the schema.
+    """
+    return uri.replace("s3://", "", 1)
+
+
+def split_uri_into_bucket_and_prefix(s3_uri: str, delimiter: str) -> Tuple[str, str]:
+    """Parse and split the S3 URI into bucket and path prefix.
+
+    :param s3_uri: S3 URI
+    :type s3_uri: str
+    :param delimiter: S3 path delimiter.
+    :type delimiter: str
+    :return: Tuple containing the S3 bucket and path prefix.
+    :rtype: Tuple[str, str]
+    """
+    tmp_path = trim_schema_from_uri(s3_uri)
     try:
-        client.download_file(
-            Bucket=bucket,
-            Key=key,
-            Filename=dest_filename,
-            **extra_kwargs,
-        )
-    except PermissionError as e:
-        utils.tprint(f"{key}...error", print_lock, quiet)
-        raise PermissionError(
-            f"Permission error when attempting to write object to {dest_filename}"
-        ) from e
-    else:
-        if exit_event.is_set():
-            return
-        utils.tprint(f"{key}...done", print_lock, quiet)
+        bucket, prefix = tmp_path.split(delimiter, maxsplit=1)
+    except ValueError:
+        bucket = tmp_path
+        prefix = ""
+    logger.debug(f"Split S3 URI into bucket={bucket}, prefix={prefix}")
+    return bucket, prefix

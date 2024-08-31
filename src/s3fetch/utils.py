@@ -43,7 +43,7 @@ def get_available_threads() -> int:
         threads = os.cpu_count() or 0
 
     if not threads:
-        logger.debug("threads not available, defaulting to 1")
+        logger.warning("threads not available, defaulting to 1")
         threads = 1
 
     logger.debug(f"threads available: {threads}")

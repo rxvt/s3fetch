@@ -2,6 +2,7 @@
 
 import logging
 import os
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -57,3 +58,12 @@ def fake_callback(chunk: bytes) -> None:
         chunk (bytes): Chunk of data.
     """
     logger.warning("Fake callback called, this should not happen.")
+
+
+def create_exit_event() -> threading.Event:
+    """Create an exit event.
+
+    Returns:
+        threading.Event: Exit event.
+    """
+    return threading.Event()

@@ -3,28 +3,11 @@
 import logging
 import os
 from pathlib import Path
-from threading import Lock
 from typing import Optional
-
-import click
 
 from . import fs
 
 logger = logging.getLogger(__name__)
-
-
-# def tprint(msg: str, lock: Lock, quiet: bool = False) -> None:
-#     """Thread safe print function.
-
-#     Args:
-#         msg (str): Message to print.
-#         lock (Lock): Lock object.
-#         quiet (bool, optional): Quiet mode enabled. Defaults to False.
-#     """
-#     lock.acquire(timeout=1)
-#     if not quiet:
-#         click.echo(msg)
-#     lock.release()
 
 
 def set_download_dir(download_dir: Optional[Path]) -> Path:
@@ -54,10 +37,10 @@ def get_available_threads() -> int:
     # os.sched_getaffinity() is not available on MacOS so default back to
     # os.cpu_count()
     try:
-        threads = len(os.sched_getaffinity(0))
+        threads = len(os.sched_getaffinity(0))  # type: ignore
     except AttributeError:
         logger.debug("os.sched_getaffinity() not available, using os.cpu_count()")
-        threads = os.cpu_count()
+        threads = os.cpu_count() or 0
 
     if not threads:
         logger.debug("threads not available, defaulting to 1")

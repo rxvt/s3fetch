@@ -83,6 +83,8 @@ def cli(
     # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/clients.html#multithreading-or-multiprocessing-with-clients
     client = aws.get_client(region, conn_pool_size)
 
+    exit_event = utils.create_exit_event()
+
     try:
         api.list_objects(
             client=client,
@@ -107,7 +109,7 @@ def cli(
             exit_event=exit_event,
             bucket=bucket,
             prefix=prefix,
-            download_dir=dest_dir,
+            download_dir=download_dir,
             delimiter=delimiter,
             download_config=download_config,
             callback=file_downloaded_callback,

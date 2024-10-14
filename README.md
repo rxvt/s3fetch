@@ -14,7 +14,7 @@ Source: [https://github.com/rxvt/s3fetch](https://github.com/rxvt/s3fetch)
 - Simple to use.
 - Multi-threaded, allowing you to download multiple objects concurrently.
 - Quickly download a subset of objects under a prefix without listing all objects first.
-- Object listing occurs in a seperate thread and downloads start as soon as the first object key is returned while the object listing completes in the background.
+- Object listing occurs in a separate thread and downloads start as soon as the first object key is returned while the object listing completes in the background.
 - Filter list of objects using regular expressions.
 - Uses standard Boto3 AWS SDK and standard AWS credential locations.
 - List only mode if you just want to see what would be downloaded.
@@ -127,7 +127,7 @@ s3fetch s3://my-test-bucket/
 
 ### Download objects with a specific prefix
 
-Download all objects that strt with `birthday-photos/2020-01-01`.
+Download all objects that start with `birthday-photos/2020-01-01`.
 
 ```text
 s3fetch s3://my-test-bucket/birthday-photos/2020-01-01

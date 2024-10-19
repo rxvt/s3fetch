@@ -2,6 +2,7 @@ import threading
 
 import boto3
 import pytest
+
 from s3fetch import s3
 from s3fetch.exceptions import (
     InvalidCredentialsError,
@@ -18,7 +19,7 @@ def test_create_download_queue():
 def test_queue_raises_exception_when_sentinel_value_found():
     queue = s3.get_download_queue()
     queue.close()
-    with pytest.raises(s3.S3FetchQueueEmpty):
+    with pytest.raises(s3.S3FetchQueueClosed):
         queue.get()
 
 
@@ -77,7 +78,7 @@ def test_listing_objects_in_bucket_and_adding_objects_to_queue(s3_client):
     assert queue.get() == key
     queue.close()
 
-    with pytest.raises(s3.S3FetchQueueEmpty):
+    with pytest.raises(s3.S3FetchQueueClosed):
         queue.get()
 
 
@@ -101,7 +102,7 @@ def test_adding_single_directory_key_to_queue(s3_client):
 
     queue.close()
 
-    with pytest.raises(s3.S3FetchQueueEmpty):
+    with pytest.raises(s3.S3FetchQueueClosed):
         queue.get()
 
 

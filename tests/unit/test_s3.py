@@ -1,7 +1,9 @@
 import threading
+from pathlib import Path
 
 import boto3
 import pytest
+from mypy_boto3_s3.client import S3Client
 
 from s3fetch import s3
 from s3fetch.exceptions import (
@@ -272,17 +274,21 @@ def test_s3_transfer_config_raises_exception():
         s3.create_s3_transfer_config(use_threads=True, max_concurrency=0)
 
 
-def test_download_object(tmp_path, s3_client):
+def test_download_object(tmp_path: Path, s3_client: S3Client):
     bucket = "my_bucket"
     key = "my_test_file"
-    dest_filename = tmp_path / "my_test_file"
+    completion_queue = s3.get_completion_queue()
     s3_client.create_bucket(Bucket=bucket)
     s3_client.put_object(Bucket=bucket, Key=key, Body=b"test data")
     s3.download(
         client=s3_client,
         bucket=bucket,
         key=key,
-        dest_filename=dest_filename,
         exit_event=threading.Event(),
-        print_lock=threading.Lock(),
+        delimiter="/",
+        prefix="",
+        download_dir=tmp_path,
+        download_config={},  # TODO: Fix
+        completed_queue=completion_queue,
     )
+    # TODO: Read data from downloaded file and validate it

@@ -59,7 +59,7 @@ def test_putting_object_onto_download_queue():
     queue.close()
 
 
-def test_listing_objects_in_bucket_and_adding_objects_to_queue(s3_client):
+def test_listing_objects_in_bucket_and_adding_objects_to_queue(s3_client: S3Client):
     bucket = "my_bucket"
     queue = s3.get_download_queue()
     key = "my_test_file"
@@ -84,7 +84,7 @@ def test_listing_objects_in_bucket_and_adding_objects_to_queue(s3_client):
         queue.get()
 
 
-def test_adding_single_directory_key_to_queue(s3_client):
+def test_adding_single_directory_key_to_queue(s3_client: S3Client):
     bucket = "my_bucket"
     queue = s3.get_download_queue()
     key = "my_test_file/"
@@ -129,7 +129,7 @@ def test_listing_objects_with_no_credentials():
         )
 
 
-def test_calling_exit_event_while_listing_objects(s3_client):
+def test_calling_exit_event_while_listing_objects(s3_client: S3Client):
     bucket = "my_bucket"
     queue = s3.get_download_queue()
     key = "my_test_file"
@@ -172,7 +172,7 @@ def test_exit_requested():
     ],
 )
 def test_excluding_directory_objects_from_download_queue(
-    key, delimiter, expected_result
+    key: str, delimiter: str, expected_result: bool
 ):
     result = s3.exclude_object(key=key, delimiter=delimiter, regex=None)
     assert result is expected_result
@@ -213,7 +213,10 @@ def test_filtering_by_regex_throws_exception():
     ],
 )
 def test_rolling_up_object_key_with_valid_prefix(
-    prefix, delimiter, key, expected_result
+    prefix: str,
+    delimiter: str,
+    key: str,
+    expected_result: bool,
 ):
     result = s3.rollup_object_key_by_prefix(key=key, delimiter=delimiter, prefix=prefix)
     assert expected_result == result
@@ -226,7 +229,11 @@ def test_rolling_up_object_key_with_valid_prefix(
         ("my:test:pre:", ":", "my:test:prefix:my_test_file"),
     ],
 )
-def test_rolling_up_object_key_with_invalid_prefix(prefix, delimiter, key):
+def test_rolling_up_object_key_with_invalid_prefix(
+    prefix: str,
+    delimiter: str,
+    key: str,
+):
     with pytest.raises(PrefixDoesNotExistError):
         s3.rollup_object_key_by_prefix(key=key, delimiter=delimiter, prefix=prefix)
 
@@ -260,7 +267,7 @@ def test_splitting_object_key_into_local_directory_and_filename(
         (False, 1),
     ],
 )
-def test_creating_s3_transfer_config(use_threads, max_concurrency):
+def test_creating_s3_transfer_config(use_threads: bool, max_concurrency: int):
     result = s3.create_s3_transfer_config(
         use_threads=use_threads,
         max_concurrency=max_concurrency,

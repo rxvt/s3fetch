@@ -72,6 +72,16 @@ def get_download_queue() -> S3FetchQueue:
     return queue
 
 
+def get_completion_queue() -> S3FetchQueue:
+    """Returns a completion queue.
+
+    Returns:
+        S3FetchQueue: FIFO completion queue.
+    """
+    queue = S3FetchQueue()
+    return queue
+
+
 def create_list_objects_thread(
     bucket: str,
     prefix: str,

@@ -92,7 +92,7 @@ def cli(
             bucket=bucket,
             prefix=prefix,
             delimiter="/",
-            regex=None,
+            regex=regex,
             exit_event=exit_event,
         )
 

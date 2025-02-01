@@ -146,3 +146,6 @@ TODO.md
 # Test data
 scripts/largefile.txt
 scripts/smallfile.txt
+
+# Local testing download dir
+tmp

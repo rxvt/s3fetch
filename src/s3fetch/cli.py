@@ -62,7 +62,7 @@ def cli(
     Example: s3fetch s3://my-test-bucket/my/birthdy-photos/2020-01-01
 
     The above will download all S3 objects located under the
-    `my/birthdy-photos/2020-01-01` prefix.
+    `my/birthday-photos/2020-01-01` prefix.
 
     You can download all objects in a bucket by using `s3fetch s3://my-test-bucket/`
     """

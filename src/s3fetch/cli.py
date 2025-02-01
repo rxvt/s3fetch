@@ -1,5 +1,6 @@
 """Command line interface for S3Fetch."""
 
+import logging
 import sys
 from pathlib import Path
 
@@ -8,6 +9,8 @@ from botocore.exceptions import ClientError
 
 from . import api, aws, s3, utils
 from .exceptions import S3FetchError
+
+logger = logging.getLogger(__name__)
 
 
 @click.command()

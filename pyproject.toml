@@ -122,7 +122,6 @@ select = [
 ]
 ignore = [
     "ANN204", # Ignore return type annotation for special methods
-    "ANN101", #Ignore missing type annotation for self in method
     ]
 
 [tool.ruff.lint.pydocstyle]

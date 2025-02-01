@@ -149,3 +149,6 @@ scripts/smallfile.txt
 
 # Local testing download dir
 tmp
+
+# PyCharm
+.idea

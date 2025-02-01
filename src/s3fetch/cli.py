@@ -69,6 +69,9 @@ def cli(
 
     You can download all objects in a bucket by using `s3fetch s3://my-test-bucket/`
     """
+    if debug:
+        utils.enable_debug()
+
     download_dir = utils.set_download_dir(download_dir)
     bucket, prefix = s3.split_uri_into_bucket_and_prefix(s3_uri, delimiter)
 

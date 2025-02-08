@@ -2,7 +2,7 @@
 
 import threading
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+from typing import Optional, Tuple
 
 from mypy_boto3_s3.client import S3Client
 
@@ -56,7 +56,6 @@ def download_objects(
     download_dir: Path,
     delimiter: str,
     download_config: dict,
-    callback: Optional[Callable] = None,
     dry_run: bool = False,
 ) -> Tuple[int, list]:
     """Download objects from S3 bucket.
@@ -72,7 +71,6 @@ def download_objects(
         download_dir (Path): Destination directory, e.g. /tmp.
         delimiter (str): S3 object key delimiter.
         download_config (dict): Download configuration.
-        callback (Callable): Callback function.
         dry_run (bool): Run in dry run mode.
 
     Returns:
@@ -89,7 +87,6 @@ def download_objects(
         download_dir=download_dir,
         delimiter=delimiter,
         download_config=download_config,
-        callback=callback,
         dry_run=dry_run,
     )
 

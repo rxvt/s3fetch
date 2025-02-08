@@ -132,7 +132,6 @@ def create_download_threads(
     download_dir: Path,
     delimiter: str,
     download_config: dict,
-    callback: Optional[Callable] = None,
     dry_run: bool = False,
 ) -> Tuple[int, list]:
     """Create download threads.
@@ -148,7 +147,6 @@ def create_download_threads(
         download_dir (Path): Download directory, e.g. `~/Downloads`.
         delimiter (str): S3 object key delimiter, e.g. `/`.
         download_config (dict): Download configuration.
-        callback (Optional[Callable], optional): Callback function. Defaults to None.
         dry_run (bool): Run in dry run mode.
 
     Returns:
@@ -168,7 +166,6 @@ def create_download_threads(
                         bucket=bucket,
                         key=key,
                         exit_event=exit_event,
-                        callback=callback,
                         delimiter=delimiter,
                         prefix=prefix,
                         download_dir=download_dir,
@@ -549,7 +546,6 @@ def download(
     download_dir: Path,
     download_config: dict,
     completed_queue: S3FetchQueue,
-    callback: Optional[Callable] = None,
     dry_run: bool = False,
 ) -> None:
     """Download an object from S3.
@@ -560,8 +556,6 @@ def download(
         key (str): S3 object key.
         dest_filename (str): Absolute local destination filename.
         exit_event (threading.Event): Notify that script to exit.
-        callback (Optional[Callable], optional): Callback function called after every X
-            bytes are downloaed. Defaults to None.
         config (Optional[TransferConfig], optional): S3 TransferConfig object.
         download_dir (Path): Download directory, e.g. `~/Downloads`.
         delimiter (str): S3 object key delimiter, e.g. `/`.

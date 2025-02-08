@@ -105,7 +105,7 @@ def cli(
             exit_event=exit_event,
         )
 
-        download_config = s3.create_download_config()
+        download_config = s3.create_download_config(callback=None)
 
         print("Starting to download objects", quiet)
         api.download_objects(

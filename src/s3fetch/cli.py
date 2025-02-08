@@ -100,10 +100,7 @@ def cli(
             exit_event=exit_event,
         )
 
-        # Needs to be passed to client.download_file()
-        download_chunk_callback = utils.fake_callback  # TODO: Fix
-        file_downloaded_callback = utils.fake_callback  # TODO: Fix
-        download_config = s3.create_download_config(download_chunk_callback)
+        download_config = s3.create_download_config()
 
         api.download_objects(
             client=client,
@@ -116,7 +113,6 @@ def cli(
             download_dir=download_dir,
             delimiter=delimiter,
             download_config=download_config,
-            callback=file_downloaded_callback,
             dry_run=dry_run,
         )
     except KeyboardInterrupt:

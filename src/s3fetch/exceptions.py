@@ -49,12 +49,6 @@ class InvalidCredentialsError(S3FetchError):
     pass
 
 
-class S3FetchQueueEmpty(S3FetchError):
-    """Raised when the queue is empty."""
-
-    pass
-
-
 class S3FetchQueueClosed(S3FetchError):
     """Raised when sentry signal is detected indicating the queue has been closed."""
 

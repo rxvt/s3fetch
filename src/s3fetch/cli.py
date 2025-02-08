@@ -9,6 +9,7 @@ from botocore.exceptions import ClientError
 
 from . import api, aws, s3, utils
 from .exceptions import S3FetchError
+from .utils import custom_print as print
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,7 @@ def cli(
 
     exit_event = utils.create_exit_event()
 
+    print(f"Starting to list objects from {s3_uri}", quiet)
     try:
         api.list_objects(
             client=client,
@@ -102,6 +104,7 @@ def cli(
 
         download_config = s3.create_download_config()
 
+        print("Starting to download objects", quiet)
         api.download_objects(
             client=client,
             threads=threads,

@@ -118,8 +118,8 @@ def cli(
     except KeyboardInterrupt:
         pass
     except ClientError as e:
-        print(e)
+        raise e
     except S3FetchError as e:
         if e.args:
-            print(e)
+            raise
         sys.exit(1)

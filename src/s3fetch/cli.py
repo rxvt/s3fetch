@@ -64,7 +64,7 @@ def cli(
 ) -> None:
     """Easily download objects from an S3 bucket.
 
-    Example: s3fetch s3://my-test-bucket/my/birthdy-photos/2020-01-01
+    Example: s3fetch s3://my-test-bucket/my/birthday-photos/2020-01-01
 
     The above will download all S3 objects located under the
     `my/birthday-photos/2020-01-01` prefix.

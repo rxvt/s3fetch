@@ -56,7 +56,7 @@ def download_objects(
     download_dir: Path,
     delimiter: str,
     download_config: dict,
-    callback: Callable,
+    callback: Optional[Callable] = None,
     dry_run: bool = False,
 ) -> Tuple[int, list]:
     """Download objects from S3 bucket.

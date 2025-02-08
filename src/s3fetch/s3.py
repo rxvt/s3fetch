@@ -176,8 +176,10 @@ def create_download_threads(
                 except S3FetchQueueClosed:
                     break
             successful_downloads, failed_downloads = generate_stats(futures)
+            completed_queue.close()
         except KeyboardInterrupt:
             exit_event.set()
+            completed_queue.close()
             shutdown_download_threads(executor)
             raise
     return successful_downloads, failed_downloads

@@ -59,7 +59,6 @@ check_types = "mypy --install-types --non-interactive {args:src/s3fetch tests}"
 test_unit = "pytest tests/unit"
 test_integration = "pytest tests/integration"
 test_e2e = "pytest tests/e2e"
-test_regex = "rm -rf '{root}/tmp/' && mkdir -p '{root}/tmp' && s3fetch -r '^large' --download-dir '{root}/tmp' s3://s3fetch-ci-test-bucket/"
 test_regex = "rm -rf '{root}/tmp/' && mkdir -p '{root}/tmp' && s3fetch --regex '^large' --download-dir '{root}/tmp' s3://s3fetch-ci-test-bucket/"
 test_dryrun = "rm -rf '{root}/tmp/' && mkdir -p '{root}/tmp' && s3fetch --dry-run --download-dir '{root}/tmp' s3://s3fetch-ci-test-bucket/"
 

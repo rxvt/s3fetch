@@ -65,3 +65,9 @@ def enable_debug() -> None:
     from s3fetch import logger as tmp_logger
 
     tmp_logger.setLevel(logging.DEBUG)
+
+
+def custom_print(msg: str, quiet: bool) -> None:
+    """Print message."""
+    if not quiet:
+        print(msg)

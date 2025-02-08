@@ -133,6 +133,7 @@ def create_download_threads(
     delimiter: str,
     download_config: dict,
     callback: Optional[Callable] = None,
+    dry_run: bool = False,
 ) -> Tuple[int, list]:
     """Create download threads.
 
@@ -148,6 +149,7 @@ def create_download_threads(
         delimiter (str): S3 object key delimiter, e.g. `/`.
         download_config (dict): Download configuration.
         callback (Optional[Callable], optional): Callback function. Defaults to None.
+        dry_run (bool): Run in dry run mode.
 
     Returns:
         Tuple[int, list]: _description_
@@ -172,6 +174,7 @@ def create_download_threads(
                         download_dir=download_dir,
                         download_config=download_config,
                         completed_queue=completed_queue,
+                        dry_run=dry_run,
                     )
                 except S3FetchQueueEmpty:
                     break
@@ -503,6 +506,7 @@ def download_object(
     bucket: str,
     download_config: dict,
     completed_queue: S3FetchQueue,
+    dry_run: bool = False,
 ) -> None:
     """Download an object from S3.
 
@@ -513,17 +517,19 @@ def download_object(
         bucket (str): S3 bucket name, e.g. `my-bucket`.
         download_config (dict): Download configuration.
         completed_queue (S3FetchQueue): Completed download queue.
+        dry_run (bool): Run in dry run mode.
 
     Raises:
         PermissionError: Raised when there is a permission error.
     """
     try:
-        client.download_file(
-            Bucket=bucket,
-            Key=key,
-            Filename=str(dest_filename),
-            **download_config,
-        )
+        if not dry_run:
+            client.download_file(
+                Bucket=bucket,
+                Key=key,
+                Filename=str(dest_filename),
+                **download_config,
+            )
     except PermissionError as e:
         raise PermissionError(
             f"Permission error when attempting to write object to {dest_filename}"
@@ -544,6 +550,7 @@ def download(
     download_config: dict,
     completed_queue: S3FetchQueue,
     callback: Optional[Callable] = None,
+    dry_run: bool = False,
 ) -> None:
     """Download an object from S3.
 
@@ -561,6 +568,7 @@ def download(
         prefix (str): S3 object key prefix, e.g. `my/test/objects/`.
         download_config (dict): Download configuration.
         completed_queue (S3FetchQueue): Completed download queue.
+        dry_run (bool): Run in dry run mode.
 
     Raises:
         PermissionError: Raised when there is a permission error.
@@ -588,6 +596,7 @@ def download(
         bucket=bucket,
         download_config=download_config,
         completed_queue=completed_queue,
+        dry_run=dry_run,
     )
 
 

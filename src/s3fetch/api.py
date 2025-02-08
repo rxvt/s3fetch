@@ -57,6 +57,7 @@ def download_objects(
     delimiter: str,
     download_config: dict,
     callback: Callable,
+    dry_run: bool,
 ) -> Tuple[int, list]:
     """Download objects from S3 bucket.
 
@@ -72,6 +73,7 @@ def download_objects(
         delimiter (str): S3 object key delimiter.
         download_config (dict): Download configuration.
         callback (Callable): Callback function.
+        dry_run (bool): Run in dry run mode.
 
     Returns:
         Tuple[int, list]: Number of successful downloads and list of failed downloads.
@@ -88,6 +90,7 @@ def download_objects(
         delimiter=delimiter,
         download_config=download_config,
         callback=callback,
+        dry_run=dry_run,
     )
 
     success, failures = stats

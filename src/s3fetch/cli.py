@@ -119,6 +119,7 @@ def cli(
             delimiter=delimiter,
             download_config=download_config,
             callback=file_downloaded_callback,
+            dry_run=dry_run,
         )
     except KeyboardInterrupt:
         pass

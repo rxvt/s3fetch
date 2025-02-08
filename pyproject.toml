@@ -141,3 +141,7 @@ convention = "google"
     "D100",
     "S101"  # Ignore use of 'assert'
     ]
+
+[tool.pyright]
+reportUnusedCallResult = false
+typeCheckingMode = "basic"

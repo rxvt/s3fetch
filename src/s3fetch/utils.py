@@ -70,4 +70,4 @@ def enable_debug() -> None:
 def custom_print(msg: str, quiet: bool) -> None:
     """Print message."""
     if not quiet:
-        print(msg)
+        print(msg, flush=True)

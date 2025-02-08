@@ -39,7 +39,10 @@ logger = logging.getLogger(__name__)
     help="Number of threads to use. Defaults to available core count.",
 )
 @click.option(
-    "--dry-run", "--list-only", is_flag=True, help="List objects only, do not download."
+    "--dry-run",
+    "--list-only",
+    is_flag=True,
+    help="List objects only, but will create local directories.",
 )
 @click.option(
     "--delimiter",

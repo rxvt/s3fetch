@@ -47,7 +47,6 @@ logger = logging.getLogger(__name__)
     help="Specify the \"directory\" delimiter. Defaults to '/'.",
 )
 @click.option("-q", "--quiet", is_flag=True, help="Don't print to stdout.")
-@click.option("--version", is_flag=True, help="Print out version information.")
 def cli(
     s3_uri: str,
     region: str,

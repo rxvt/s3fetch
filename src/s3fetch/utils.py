@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Optional
 
 from . import fs
+from .exceptions import S3FetchQueueClosed
+from .s3 import S3FetchQueue
 
 logger = logging.getLogger(__name__)
 
@@ -71,3 +73,34 @@ def custom_print(msg: str, quiet: bool) -> None:
     """Print message."""
     if not quiet:
         print(msg, flush=True)
+
+
+def create_print_completed_objects_thread(queue: S3FetchQueue) -> None:
+    """Create a thread to print the object keys of finished downloads to STDOUT.
+
+    Args:
+        queue (S3FetchQueue): FIFO download queue.
+    """
+    logger.debug("Creating completed queue print thread")
+    threading.Thread(
+        name="print_completed_objects",
+        target=print_completed_objects,
+        kwargs={
+            "queue": queue,
+        },
+    ).start()
+
+
+def print_completed_objects(queue: S3FetchQueue) -> None:
+    """Watch the completed object queue and print the object keys to STDOUT.
+
+    Args:
+        queue (S3FetchQueue): FIFO download queue.
+    """
+    while True:
+        try:
+            key = queue.get(block=True)
+            custom_print(key, False)
+        except S3FetchQueueClosed:
+            logger.debug("S3FetchQueueClosed exception received")
+            break

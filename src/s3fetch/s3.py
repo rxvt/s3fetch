@@ -476,7 +476,7 @@ def create_s3_transfer_config(
     return s3transfer_config
 
 
-def create_download_config(callback: Optional[Callable]) -> dict:
+def create_download_config(callback: Optional[Callable] = None) -> dict:
     """Create a download configuration.
 
     Args:

@@ -58,7 +58,6 @@ def cli(
     dry_run: bool,
     delimiter: str,
     quiet: bool,
-    version: bool,
 ) -> None:
     """Easily download objects from an S3 bucket.
 

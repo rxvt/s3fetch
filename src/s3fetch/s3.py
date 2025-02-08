@@ -21,7 +21,7 @@ from s3fetch.exceptions import (
 )
 
 from . import fs
-from .exceptions import S3FetchQueueClosed, S3FetchQueueEmpty
+from .exceptions import S3FetchQueueClosed
 
 logger = logging.getLogger(__name__)
 
@@ -173,9 +173,8 @@ def create_download_threads(
                         completed_queue=completed_queue,
                         dry_run=dry_run,
                     )
-                except S3FetchQueueEmpty:
+                except S3FetchQueueClosed:
                     break
-
             successful_downloads, failed_downloads = generate_stats(futures)
         except KeyboardInterrupt:
             exit_event.set()

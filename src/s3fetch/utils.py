@@ -51,15 +51,6 @@ def get_available_threads() -> int:
     return threads
 
 
-def fake_callback(chunk: bytes) -> None:
-    """A fake callback placeholder until I make the real one.
-
-    Args:
-        chunk (bytes): Chunk of data.
-    """
-    logger.warning("Fake callback called, this should not happen.")
-
-
 def create_exit_event() -> threading.Event:
     """Create an exit event.
 

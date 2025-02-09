@@ -13,6 +13,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = ["boto3~=1.34.144", "boto3-stubs[s3]", "click~=8.1.0"]
 
@@ -44,7 +45,7 @@ extra-dependencies = [
 ]
 
 [[tool.hatch.envs.hatch-test.matrix]]
-python = ["3.12", "3.11", "3.10", "3.9"]
+python = ["3.13", "3.12", "3.11", "3.10", "3.9"]
 
 [tool.hatch.envs.default.scripts]
 check_types = "mypy --install-types --non-interactive {args:src/s3fetch tests}"

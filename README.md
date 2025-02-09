@@ -1,5 +1,28 @@
 # S3Fetch
 
+<!--toc:start-->
+- [S3Fetch](#s3fetch)
+  - [Features](#features)
+  - [Why use S3Fetch?](#why-use-s3fetch)
+  - [Benchmarks](#benchmarks)
+    - [With 100 threads](#with-100-threads)
+      - [With 8 threads](#with-8-threads)
+  - [Installation](#installation)
+    - [Requirements](#requirements)
+    - [pipx (recommended)](#pipx-recommended)
+    - [pip](#pip)
+  - [Usage](#usage)
+  - [Examples](#examples)
+    - [Full example](#full-example)
+    - [Download all objects from a bucket](#download-all-objects-from-a-bucket)
+    - [Download objects with a specific prefix](#download-objects-with-a-specific-prefix)
+    - [Download objects to a specific directory](#download-objects-to-a-specific-directory)
+    - [Download multiple objects concurrently](#download-multiple-objects-concurrently)
+    - [Filter objects using regular expressions](#filter-objects-using-regular-expressions)
+  - [Troubleshooting](#troubleshooting)
+    - [MacOS hangs when downloading using high number of threads](#macos-hangs-when-downloading-using-high-number-of-threads)
+<!--toc:end-->
+
 Simple & fast multi-threaded S3 download tool.
 
 Source: [https://github.com/rxvt/s3fetch](https://github.com/rxvt/s3fetch)
@@ -18,6 +41,7 @@ Source: [https://github.com/rxvt/s3fetch](https://github.com/rxvt/s3fetch)
 - Filter list of objects using regular expressions.
 - Uses standard Boto3 AWS SDK and standard AWS credential locations.
 - List only mode if you just want to see what would be downloaded.
+- Implemented as a simple API you can use in your own projects.
 
 ## Why use S3Fetch?
 
@@ -61,7 +85,7 @@ Timed out while listing objects after 60min.
 
 ### Requirements
 
-- Python >= 3.7
+- Python >= 3.9
 - AWS credentials in one of the [standard locations](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-where)
 
 S3Fetch is available on PyPi and can be installed via one of the following methods.

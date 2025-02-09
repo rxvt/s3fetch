@@ -14,7 +14,7 @@ from .utils import custom_print as print
 logger = logging.getLogger(__name__)
 
 
-@click.command()
+@click.command(name="S3Fetch")
 @click.version_option()
 @click.argument("s3_uri", type=str)
 @click.option(

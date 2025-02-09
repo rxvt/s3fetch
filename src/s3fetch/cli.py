@@ -108,7 +108,10 @@ def cli(
         download_config = s3.create_download_config(callback=None)
 
         if not quiet:
-            utils.create_print_completed_objects_thread(completed_queue)
+            api.create_completed_objects_thread(
+                queue=completed_queue,
+                func=utils.print_completed_objects,
+            )
 
         print("Starting to download objects", quiet)
         api.download_objects(

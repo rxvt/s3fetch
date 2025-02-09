@@ -1,13 +1,16 @@
 """Public API for S3Fetch."""
 
+import logging
 import threading
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 from mypy_boto3_s3.client import S3Client
 
 from . import s3
 from .s3 import S3FetchQueue
+
+logger = logging.getLogger(__name__)
 
 
 def list_objects(
@@ -92,3 +95,27 @@ def download_objects(
 
     success, failures = stats
     return success, failures
+
+
+def create_completed_objects_thread(
+    queue: S3FetchQueue,
+    func: Callable,
+    **kwargs: dict,
+) -> None:
+    """Create a thread to monitor for completed objects.
+
+    Args:
+        queue (S3FetchQueue): FIFO download queue.
+        func (Callable): Function to run in a new thread. Will receive the completed
+            objects queue and any additional kwargs passed.
+        **kwargs: Any additional arguments to pass to `func`.
+    """
+    logger.debug("Creating completed objects thread")
+    threading.Thread(
+        name="completed_objects",
+        target=func,
+        kwargs={
+            "queue": queue,
+            **kwargs,
+        },
+    ).start()

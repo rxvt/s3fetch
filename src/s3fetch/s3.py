@@ -496,8 +496,8 @@ def create_download_config(callback: Optional[Callable] = None) -> dict:
 
     if callback:
         extra_kwargs["Callback"] = callback
-    if transfer_config:
-        extra_kwargs["Config"] = transfer_config
+
+    extra_kwargs["Config"] = transfer_config
     return extra_kwargs
 
 

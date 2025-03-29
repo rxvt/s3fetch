@@ -315,3 +315,89 @@ def test_creating_the_thread_to_list_objects(s3_client: S3Client):
         regex=None,
     )
     assert isinstance(result, threading.Thread)
+
+
+def test_create_download_thread_with_empty_download_queue(s3_client, tmp_path):
+    download_queue = s3.get_download_queue()
+    download_queue.close()
+    completed_queue = s3.get_completion_queue()
+    exit_event = threading.Event()
+    successful_downloads, failed_downloads = s3.create_download_threads(
+        client=s3_client,
+        threads=4,
+        download_queue=download_queue,
+        completed_queue=completed_queue,
+        exit_event=exit_event,
+        bucket="fake_bucket",
+        prefix="",
+        download_dir=tmp_path,
+        delimiter="/",
+        download_config={},
+        dry_run=False,
+    )
+    assert successful_downloads == 0
+    assert failed_downloads == []
+
+
+def test_create_download_thread_with_single_object_in_download_queue(
+    s3_client, tmp_path
+):
+    bucket = "test_bucket"
+    key = "test_object/filename"
+    download_queue = s3.get_download_queue()
+    download_queue.put(key)
+    download_queue.close()
+    completed_queue = s3.get_completion_queue()
+    exit_event = threading.Event()
+    s3_client.create_bucket(Bucket=bucket)
+    s3_client.put_object(Bucket=bucket, Key=key, Body=b"test data")
+    successful_downloads, failed_downloads = s3.create_download_threads(
+        client=s3_client,
+        threads=4,
+        download_queue=download_queue,
+        completed_queue=completed_queue,
+        exit_event=exit_event,
+        bucket=bucket,
+        prefix="",
+        download_dir=tmp_path,
+        delimiter="/",
+        download_config={},
+        dry_run=False,
+    )
+    assert successful_downloads == 1
+    assert failed_downloads == []
+
+
+def test_create_download_thread_with_multiple_objects_in_download_queue(
+    s3_client, tmp_path
+):
+    bucket = "test_bucket"
+    key1 = "test_object/filename1"
+    key2 = "test_object/filename2"
+    key3 = "test_object/filename3"
+    download_queue = s3.get_download_queue()
+    download_queue.put(key1)
+    download_queue.put(key2)
+    download_queue.put(key3)
+    download_queue.close()
+    completed_queue = s3.get_completion_queue()
+    exit_event = threading.Event()
+    s3_client.create_bucket(Bucket=bucket)
+    s3_client.put_object(Bucket=bucket, Key=key1, Body=b"test data")
+    s3_client.put_object(Bucket=bucket, Key=key2, Body=b"test data")
+    s3_client.put_object(Bucket=bucket, Key=key3, Body=b"test data")
+    successful_downloads, failed_downloads = s3.create_download_threads(
+        client=s3_client,
+        threads=4,
+        download_queue=download_queue,
+        completed_queue=completed_queue,
+        exit_event=exit_event,
+        bucket=bucket,
+        prefix="",
+        download_dir=tmp_path,
+        delimiter="/",
+        download_config={},
+        dry_run=False,
+    )
+    assert successful_downloads == 3
+    assert failed_downloads == []

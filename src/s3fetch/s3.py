@@ -90,7 +90,7 @@ def create_list_objects_thread(
     delimiter: str,
     regex: Optional[str],
     exit_event: threading.Event,
-) -> None:
+) -> threading.Thread:
     """Starts a seperate thread that lists of objects from the specified S3 bucket.
 
     Starts a seperate thread that lists of objects from the specified S3 bucket
@@ -105,8 +105,11 @@ def create_list_objects_thread(
         delimiter (str): Delimiter for the logical folder hierarchy.
         regex (Optional[str]): Regular expression to use for filtering objects.
         exit_event (threading.Event): Notify that script to exit.
+
+    Returns:
+       threading.Thread: Thread that lists the objects in the bucket.
     """
-    threading.Thread(
+    list_objects_thread = threading.Thread(
         name="list_objects",
         target=list_objects,
         kwargs={
@@ -118,7 +121,8 @@ def create_list_objects_thread(
             "regex": regex,
             "exit_event": exit_event,
         },
-    ).start()
+    )
+    return list_objects_thread
 
 
 def create_download_threads(

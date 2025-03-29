@@ -37,7 +37,7 @@ def list_objects(
         regex (Optional[str]): Regular expression to use for filtering objects.
         exit_event (threading.Event): Notify that script to exit.
     """
-    s3.create_list_objects_thread(
+    list_objects_thread = s3.create_list_objects_thread(
         bucket=bucket,
         prefix=prefix,
         client=client,
@@ -46,6 +46,7 @@ def list_objects(
         regex=regex,
         exit_event=exit_event,
     )
+    list_objects_thread.start()
 
 
 def download_objects(

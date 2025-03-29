@@ -25,6 +25,7 @@ description = """
 General development environment.
 """
 type = "pip-compile"
+installer = "uv"
 python = "3.9"
 extra-dependencies = [
   "pytest~=8.2.0",
@@ -38,6 +39,7 @@ extra-dependencies = [
 [tool.hatch.envs.hatch-test]
 description = """Testing environment."""
 type = "pip-compile"
+installer = "uv"
 extra-dependencies = [
   "moto[s3]~=5.0.28",
   "pytest~=8.2.0",

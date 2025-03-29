@@ -3,6 +3,7 @@ from pathlib import Path
 
 import boto3
 import pytest
+from boto3.s3.transfer import TransferConfig
 from mypy_boto3_s3.client import S3Client
 
 from s3fetch import s3
@@ -401,3 +402,24 @@ def test_create_download_thread_with_multiple_objects_in_download_queue(
     )
     assert successful_downloads == 3
     assert failed_downloads == []
+
+
+def test_download_config_return_data():
+    result = s3.create_download_config()
+    assert isinstance(result, dict)
+    assert isinstance(result.get("Config"), TransferConfig)
+
+
+def test_creating_the_download_config_without_callback():
+    result = s3.create_download_config()
+    assert not result.get("Callback")
+    assert result.get("Config")
+
+
+def test_creating_the_download_config_with_callback():
+    def test_callback() -> None:
+        pass
+
+    result = s3.create_download_config(test_callback)
+    assert result.get("Callback")
+    assert result.get("Config")

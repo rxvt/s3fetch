@@ -1,6 +1,7 @@
 import pytest
 
 from s3fetch import fs
+from s3fetch.exceptions import DirectoryDoesNotExistError
 
 
 @pytest.mark.parametrize(
@@ -22,3 +23,12 @@ def test_creating_destination_directory(tmp_path, object_dir, delimiter, expecte
         expected_dir = tmp_path
     assert expected_dir == result
     assert expected_dir.is_dir()
+
+
+def test_raise_exception_if_directory_doesnt_exist(tmp_path):
+    with pytest.raises(DirectoryDoesNotExistError):
+        fs.check_download_dir_exists(tmp_path / "blah")
+
+
+def test_dont_raise_exception_if_directory_exists(tmp_path):
+    fs.check_download_dir_exists(tmp_path)

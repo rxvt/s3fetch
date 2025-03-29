@@ -300,3 +300,18 @@ def test_download_object(tmp_path: Path, s3_client: S3Client):
         completed_queue=completion_queue,
     )
     # TODO: Read data from downloaded file and validate it
+
+
+def test_creating_the_thread_to_list_objects(s3_client: S3Client):
+    download_queue = s3.get_download_queue()
+    exit_event = threading.Event()
+    result = s3.create_list_objects_thread(
+        bucket="fake_bucket",
+        prefix="",
+        client=s3_client,
+        download_queue=download_queue,
+        delimiter="/",
+        exit_event=exit_event,
+        regex=None,
+    )
+    assert isinstance(result, threading.Thread)

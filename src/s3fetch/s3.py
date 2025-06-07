@@ -6,7 +6,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from queue import Queue
-from typing import Callable, Generator, Optional, Tuple
+from typing import Callable, Generator, Optional, Pattern, Tuple
 
 import boto3
 from boto3.s3.transfer import TransferConfig
@@ -232,7 +232,15 @@ def list_objects(
 
     Raises:
         InvalidCredentialsError: Raised if AWS credentials are invalid.
+        RegexError: Raised if the regex cannot be compiled.
     """
+    compiled_regex: Optional[Pattern] = None
+    if regex:
+        try:
+            compiled_regex = re.compile(rf"{regex}")
+        except re.error as e:
+            raise RegexError from e
+
     try:
         for obj_key in paginate_objects(client=client, bucket=bucket, prefix=prefix):
             if exit_requested(exit_event):
@@ -240,7 +248,7 @@ def list_objects(
                     "Not adding %s to download queue as exit_event is set", obj_key
                 )
                 raise SystemExit
-            if exclude_object(obj_key, delimiter, regex):
+            if exclude_object(obj_key, delimiter, compiled_regex):
                 continue
             add_object_to_download_queue(obj_key, queue)
         close_download_queue(queue)
@@ -287,22 +295,22 @@ def exit_requested(exit_event: threading.Event) -> bool:
     return False
 
 
-def exclude_object(key: str, delimiter: str, regex: Optional[str]) -> bool:
+def exclude_object(key: str, delimiter: str, regex: Optional[Pattern]) -> bool:
     """Determines if an S3 object should be added to the download queue.
 
     This is a wrapper for checking if the object key should be added to the download
     queue. Reasons for excluding an object could be it's a 'directory' or if the object
-    matches a provided regular expression.
+    does not match a provided regular expression.
 
     Args:
         key (str): S3 object key.
         delimiter (str): Object key 'folder' delimiter.
-        regex (Optional[str]): Python compatible regular expression.
+        regex (Optional[Pattern]): Compiled Python regular expression, or None.
 
     Returns:
-        bool: Returns True if the object should be downloaded, False otherwise.
+        bool: Returns True if the object should be excluded (not downloaded), False
+        otherwise.
     """
-    # If true then object is included in results
     if check_if_key_is_directory(key=key, delimiter=delimiter):
         logger.debug("Excluded directory %s from results", key)
         return True
@@ -327,28 +335,20 @@ def check_if_key_is_directory(key: str, delimiter: str) -> bool:
     return False
 
 
-def filter_by_regex(key: str, regex: str) -> bool:
-    """Filter objects by regular expression.
+def filter_by_regex(key: str, regex: Pattern) -> bool:
+    """Filter objects by compiled regular expression.
 
     If an object matches the regex then it is included in the list of objects to
     download.
 
     Args:
         key (str): S3 object key.
-        regex (str): Python compatible regular expression.
-
-    Raises:
-        RegexError: Raised when the regex cannot be compiled due to an error.
+        regex (Pattern): Compiled Python regular expression.
 
     Returns:
         bool: True if the regex matches the object key, False otherwise.
     """
-    try:
-        rexp = re.compile(rf"{regex}")
-    except re.error as e:
-        raise RegexError from e
-
-    if rexp.search(key):
+    if regex.search(key):
         return True
     return False
 

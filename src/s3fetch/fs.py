@@ -26,8 +26,8 @@ def create_destination_directory(
     # directory delimiter.
     if object_dir:
         directories = object_dir.split(delimiter)
-        tmp_dir = Path(*directories)
-        absolute_directory = download_dir / Path(tmp_dir)
+        local_download_path = Path(*directories)
+        absolute_directory = download_dir / Path(local_download_path)
     else:
         absolute_directory = download_dir
 

@@ -62,26 +62,6 @@ class S3FetchQueue:
         self.queue.put(None)
 
 
-def get_download_queue() -> S3FetchQueue:
-    """Returns the download queue.
-
-    Returns:
-        S3FetchQueue: FIFO download queue.
-    """
-    queue = S3FetchQueue()
-    return queue
-
-
-def get_completion_queue() -> S3FetchQueue:
-    """Returns a completion queue.
-
-    Returns:
-        S3FetchQueue: FIFO completion queue.
-    """
-    queue = S3FetchQueue()
-    return queue
-
-
 def get_queue(queue_type: str) -> S3FetchQueue:
     """Factory function to create a download or completion queue.
 

@@ -38,6 +38,8 @@ extra-dependencies = [
   "ruff~=0.9.4",
 ]
 
+post-install-commands = ["pre-commit install"]
+
 [tool.hatch.envs.hatch-test]
 description = """Testing environment."""
 type = "pip-compile"

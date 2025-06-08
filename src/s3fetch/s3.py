@@ -82,6 +82,23 @@ def get_completion_queue() -> S3FetchQueue:
     return queue
 
 
+def get_queue(queue_type: str) -> S3FetchQueue:
+    """Factory function to create a download or completion queue.
+
+    Args:
+        queue_type (str): Type of queue to create. Must be 'download' or 'completion'.
+
+    Returns:
+        S3FetchQueue: FIFO queue instance.
+
+    Raises:
+        ValueError: If queue_type is not 'download' or 'completion'.
+    """
+    if queue_type not in ("download", "completion"):
+        raise ValueError("queue_type must be 'download' or 'completion'")
+    return S3FetchQueue()
+
+
 def create_list_objects_thread(
     bucket: str,
     prefix: str,

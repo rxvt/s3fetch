@@ -1,6 +1,7 @@
 """Filesystem utilities for S3Fetch."""
 
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -54,7 +55,7 @@ def create_destination_directory(
 
 
 def check_download_dir_exists(download_dir: Path) -> None:
-    """Check if the download directory exists.
+    """Check if the download directory exists and is accessible.
 
     Args:
         download_dir (Path): Download directory, e.g. /tmp.
@@ -63,11 +64,24 @@ def check_download_dir_exists(download_dir: Path) -> None:
         None
 
     Raises:
-        DirectoryDoesNotExistError: If the download directory does not exist.
+        DirectoryDoesNotExistError: If the download directory does not exist or is not a
+            directory.
+        PermissionError: If the directory exists but is not accessible due to
+            permissions.
     """
-    if not download_dir.is_dir():
+    if not download_dir.exists():
         logger.error("Download directory does not exist: '%s'", download_dir)
         raise DirectoryDoesNotExistError(
             f"The directory '{download_dir}' does not exist."
         )
-    logger.info("Download directory exists: '%s'", download_dir)
+    if not download_dir.is_dir():
+        logger.error("Path exists but is not a directory: '%s'", download_dir)
+        raise DirectoryDoesNotExistError(
+            f"The path '{download_dir}' exists but is not a directory."
+        )
+    if not os.access(download_dir, os.R_OK | os.W_OK | os.X_OK):
+        logger.error("Insufficient permissions for directory: '%s'", download_dir)
+        raise PermissionError(
+            f"Insufficient permissions to access directory '{download_dir}'."
+        )
+    logger.info("Download directory exists and is accessible: '%s'", download_dir)

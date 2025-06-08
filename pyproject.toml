@@ -130,7 +130,6 @@ convention = "google"
 # Ignore `E402` (import violations) in all `__init__.py` files, and in `path/to/file.py`.
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["D104"]
-"tests/unit/test_s3fetch_old.py" = ["ALL"] # Remove after all tests migrated
 "tests/*" = [
   "ANN201", # Ignore missing return types for test functions
   "ANN001", # Ignore missing type annotations for test functions

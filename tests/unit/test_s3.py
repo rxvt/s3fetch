@@ -16,12 +16,12 @@ from s3fetch.exceptions import (
 
 
 def test_create_download_queue():
-    queue = s3.get_download_queue()
+    queue = s3.get_queue("download")
     assert isinstance(queue, s3.S3FetchQueue)
 
 
 def test_queue_raises_exception_when_sentinel_value_found():
-    queue = s3.get_download_queue()
+    queue = s3.get_queue("download")
     queue.close()
     with pytest.raises(S3FetchQueueClosed):
         queue.get()
@@ -54,7 +54,7 @@ def test_include_keys_starting_with_my_(key: str):
 
 
 def test_putting_object_onto_download_queue():
-    queue = s3.get_download_queue()
+    queue = s3.get_queue("download")
     key = "my_test_file"
     s3.add_object_to_download_queue(key=key, queue=queue)
     assert queue.get() == key
@@ -63,7 +63,7 @@ def test_putting_object_onto_download_queue():
 
 def test_listing_objects_in_bucket_and_adding_objects_to_queue(s3_client: S3Client):
     bucket = "my_bucket"
-    queue = s3.get_download_queue()
+    queue = s3.get_queue("download")
     key = "my_test_file"
     s3_client.create_bucket(Bucket=bucket)
     s3_client.put_object(Bucket=bucket, Key=key, Body=b"test data")
@@ -88,7 +88,7 @@ def test_listing_objects_in_bucket_and_adding_objects_to_queue(s3_client: S3Clie
 
 def test_adding_single_directory_key_to_queue(s3_client: S3Client):
     bucket = "my_bucket"
-    queue = s3.get_download_queue()
+    queue = s3.get_queue("download")
     key = "my_test_file/"
     s3_client.create_bucket(Bucket=bucket)
     s3_client.put_object(Bucket=bucket, Key=key, Body=b"test data")
@@ -115,7 +115,7 @@ def test_listing_objects_with_no_credentials():
     s3_client = boto3.client("s3", region_name="us-east-1")
 
     bucket = "my_bucket"
-    queue = s3.get_download_queue()
+    queue = s3.get_queue("download")
     queue.close()
     exit_event = threading.Event()
 
@@ -133,7 +133,7 @@ def test_listing_objects_with_no_credentials():
 
 def test_calling_exit_event_while_listing_objects(s3_client: S3Client):
     bucket = "my_bucket"
-    queue = s3.get_download_queue()
+    queue = s3.get_queue("download")
     key = "my_test_file"
     s3_client.create_bucket(Bucket=bucket)
     s3_client.put_object(Bucket=bucket, Key=key, Body=b"test data")
@@ -286,7 +286,7 @@ def test_s3_transfer_config_raises_exception():
 def test_download_object(tmp_path: Path, s3_client: S3Client):
     bucket = "my_bucket"
     key = "my_test_file"
-    completion_queue = s3.get_completion_queue()
+    completion_queue = s3.get_queue("completion")
     s3_client.create_bucket(Bucket=bucket)
     s3_client.put_object(Bucket=bucket, Key=key, Body=b"test data")
     s3.download(
@@ -304,7 +304,7 @@ def test_download_object(tmp_path: Path, s3_client: S3Client):
 
 
 def test_creating_the_thread_to_list_objects(s3_client: S3Client):
-    download_queue = s3.get_download_queue()
+    download_queue = s3.get_queue("download")
     exit_event = threading.Event()
     result = s3.create_list_objects_thread(
         bucket="fake_bucket",
@@ -319,9 +319,9 @@ def test_creating_the_thread_to_list_objects(s3_client: S3Client):
 
 
 def test_create_download_thread_with_empty_download_queue(s3_client, tmp_path):
-    download_queue = s3.get_download_queue()
+    download_queue = s3.get_queue("download")
     download_queue.close()
-    completed_queue = s3.get_completion_queue()
+    completed_queue = s3.get_queue("completion")
     exit_event = threading.Event()
     successful_downloads, failed_downloads = s3.create_download_threads(
         client=s3_client,
@@ -345,10 +345,10 @@ def test_create_download_thread_with_single_object_in_download_queue(
 ):
     bucket = "test_bucket"
     key = "test_object/filename"
-    download_queue = s3.get_download_queue()
+    download_queue = s3.get_queue("download")
     download_queue.put(key)
     download_queue.close()
-    completed_queue = s3.get_completion_queue()
+    completed_queue = s3.get_queue("completion")
     exit_event = threading.Event()
     s3_client.create_bucket(Bucket=bucket)
     s3_client.put_object(Bucket=bucket, Key=key, Body=b"test data")
@@ -376,12 +376,12 @@ def test_create_download_thread_with_multiple_objects_in_download_queue(
     key1 = "test_object/filename1"
     key2 = "test_object/filename2"
     key3 = "test_object/filename3"
-    download_queue = s3.get_download_queue()
+    download_queue = s3.get_queue("download")
     download_queue.put(key1)
     download_queue.put(key2)
     download_queue.put(key3)
     download_queue.close()
-    completed_queue = s3.get_completion_queue()
+    completed_queue = s3.get_queue("completion")
     exit_event = threading.Event()
     s3_client.create_bucket(Bucket=bucket)
     s3_client.put_object(Bucket=bucket, Key=key1, Body=b"test data")

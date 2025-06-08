@@ -71,6 +71,43 @@ def cli(
 
     You can download all objects in a bucket by using `s3fetch s3://my-test-bucket/`
     """
+    run_cli(
+        s3_uri=s3_uri,
+        region=region,
+        debug=debug,
+        download_dir=download_dir,
+        regex=regex,
+        threads=threads,
+        dry_run=dry_run,
+        delimiter=delimiter,
+        quiet=quiet,
+    )
+
+
+def run_cli(
+    s3_uri: str,
+    region: str,
+    debug: bool,
+    download_dir: Path,
+    regex: str,
+    threads: int,
+    dry_run: bool,
+    delimiter: str,
+    quiet: bool,
+) -> None:
+    """Run the main S3Fetch CLI logic.
+
+    Args:
+        s3_uri (str): The S3 URI to fetch from.
+        region (str): AWS region for the S3 bucket.
+        debug (bool): Enable debug output if True.
+        download_dir (Path): Directory to download files into.
+        regex (str): Regex pattern to filter objects.
+        threads (int): Number of threads to use for downloading.
+        dry_run (bool): If True, only list objects without downloading.
+        delimiter (str): Delimiter for S3 object keys.
+        quiet (bool): If True, suppress output to stdout.
+    """
     if debug:
         utils.enable_debug()
 
@@ -86,11 +123,7 @@ def cli(
     )
     download_queue = api.S3FetchQueue()
     completed_queue = api.S3FetchQueue()
-
-    # Boto3 client is generally thread safe.
-    # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/clients.html#multithreading-or-multiprocessing-with-clients
     client = aws.get_client(region, conn_pool_size)
-
     exit_event = utils.create_exit_event()
 
     print(f"Starting to list objects from {s3_uri}", quiet)
@@ -100,7 +133,7 @@ def cli(
             download_queue=download_queue,
             bucket=bucket,
             prefix=prefix,
-            delimiter="/",
+            delimiter=delimiter,
             regex=regex,
             exit_event=exit_event,
         )

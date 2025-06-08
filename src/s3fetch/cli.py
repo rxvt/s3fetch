@@ -116,9 +116,9 @@ def get_thread_and_pool_size(threads: int) -> tuple[int, int]:
 def create_client_and_queues(
     region: str, conn_pool_size: int
 ) -> tuple[S3Client, S3FetchQueue, S3FetchQueue]:
-    """Create the S3 client and download/completed queues."""
-    download_queue = api.S3FetchQueue()  # TODO: Use factory function
-    completed_queue = api.S3FetchQueue()  # TODO: Use factory function
+    """Create the S3 client and download/completed queues using the factory function."""
+    download_queue = s3.get_queue("download")
+    completed_queue = s3.get_queue("completion")
     client = aws.get_client(region, conn_pool_size)
     return client, download_queue, completed_queue
 

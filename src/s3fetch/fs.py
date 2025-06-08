@@ -25,8 +25,10 @@ def create_destination_directory(
     Returns:
         Path: The absolute path to the local destination directory.
     """
-    # Build the absolute directory path converting the object delimiter into a local
-    # directory delimiter.
+    # Build the absolute directory path by converting the S3 object key's delimiter
+    # (e.g., '/') into the local filesystem's directory structure. This ensures that
+    # the downloaded file is placed in a directory hierarchy that mirrors the S3 key
+    # structure under the specified download base directory.
     if object_dir:
         directories = object_dir.split(delimiter)
         local_download_path = Path(*directories)

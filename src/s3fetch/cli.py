@@ -88,7 +88,11 @@ def cli(
 
 
 def setup_debug(debug: bool) -> None:
-    """Enable debug output if requested."""
+    """Enable debug output if requested.
+
+    Args:
+        debug (bool): Enable debug output if True.
+    """
     if debug:
         utils.enable_debug()
 
@@ -96,14 +100,30 @@ def setup_debug(debug: bool) -> None:
 def prepare_download_dir_and_prefix(
     download_dir: Path, s3_uri: str, delimiter: str
 ) -> tuple[Path, str, str]:
-    """Set up the download directory and split the S3 URI into bucket and prefix."""
+    """Set up the download directory and split the S3 URI into bucket and prefix.
+
+    Args:
+        download_dir (Path): Directory to download files into.
+        s3_uri (str): The S3 URI to fetch from.
+        delimiter (str): Delimiter for S3 object keys.
+
+    Returns:
+        tuple[Path, str, str]: The download directory, bucket, and prefix.
+    """
     download_dir = utils.set_download_dir(download_dir)
     bucket, prefix = s3.split_uri_into_bucket_and_prefix(s3_uri, delimiter)
     return download_dir, bucket, prefix
 
 
 def get_thread_and_pool_size(threads: int) -> tuple[int, int]:
-    """Determine thread count and connection pool size."""
+    """Determine thread count and connection pool size.
+
+    Args:
+        threads (int): Number of threads to use for downloading.
+
+    Returns:
+        tuple[int, int]: The thread count and connection pool size.
+    """
     if not threads:
         threads = utils.get_available_threads()
     conn_pool_size = aws.calc_connection_pool_size(
@@ -116,7 +136,16 @@ def get_thread_and_pool_size(threads: int) -> tuple[int, int]:
 def create_client_and_queues(
     region: str, conn_pool_size: int
 ) -> tuple[S3Client, S3FetchQueue, S3FetchQueue]:
-    """Create the S3 client and download/completed queues using the factory function."""
+    """Create the S3 client and download/completed queues using the factory function.
+
+    Args:
+        region (str): AWS region for the S3 bucket.
+        conn_pool_size (int): Connection pool size for the S3 client.
+
+    Returns:
+        tuple[S3Client, S3FetchQueue, S3FetchQueue]:
+            The S3 client, download queue, and completed queue.
+    """
     download_queue = s3.get_queue("download")
     completed_queue = s3.get_queue("completion")
     client = aws.get_client(region, conn_pool_size)
@@ -132,7 +161,17 @@ def list_objects(
     regex: str,
     exit_event: threading.Event,
 ) -> None:
-    """List objects in the S3 bucket and add them to the download queue."""
+    """List objects in the S3 bucket and add them to the download queue.
+
+    Args:
+        client (S3Client): The S3 client.
+        download_queue (S3FetchQueue): Queue for objects to download.
+        bucket (str): S3 bucket name.
+        prefix (str): S3 prefix to filter objects.
+        delimiter (str): Delimiter for S3 object keys.
+        regex (str): Regex pattern to filter objects.
+        exit_event (threading.Event): Event to signal exit.
+    """
     api.list_objects(
         client=client,
         download_queue=download_queue,
@@ -157,7 +196,21 @@ def download_objects(
     download_config: dict,
     dry_run: bool,
 ) -> None:
-    """Download objects from the S3 bucket using the provided configuration."""
+    """Download objects from the S3 bucket using the provided configuration.
+
+    Args:
+        client (S3Client): The S3 client.
+        threads (int): Number of threads to use for downloading.
+        download_queue (S3FetchQueue): Queue for objects to download.
+        completed_queue (S3FetchQueue): Queue for completed downloads.
+        exit_event (threading.Event): Event to signal exit.
+        bucket (str): S3 bucket name.
+        prefix (str): S3 prefix to filter objects.
+        download_dir (Path): Directory to download files into.
+        delimiter (str): Delimiter for S3 object keys.
+        download_config (dict): Download configuration.
+        dry_run (bool): If True, only list objects without downloading.
+    """
     api.download_objects(
         client=client,
         threads=threads,

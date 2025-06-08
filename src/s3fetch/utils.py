@@ -32,24 +32,30 @@ def set_download_dir(download_dir: Optional[Path]) -> Path:
 
 
 def get_available_threads() -> int:
-    """Get the number of available threads.
+    """Get the number of available threads for the current platform.
 
     Returns:
-        int: Number of available threads.
+        int: Number of available threads (always >= 1).
     """
-    # os.sched_getaffinity() is not available on MacOS so default back to
-    # os.cpu_count()
-    try:
-        threads = len(os.sched_getaffinity(0))  # type: ignore
-    except AttributeError:
-        logger.debug("os.sched_getaffinity() not available, using os.cpu_count()")
-        threads = os.cpu_count() or 0
-
-    if not threads:
-        logger.warning("threads not available, defaulting to 1")
+    threads = None
+    # Prefer sched_getaffinity if available (Linux), fallback to cpu_count otherwise.
+    sched_getaffinity = getattr(os, "sched_getaffinity", None)
+    if sched_getaffinity is not None:
+        try:
+            threads = len(sched_getaffinity(0))
+            logger.debug("Using os.sched_getaffinity(0): %d threads available", threads)
+        except Exception as e:
+            logger.warning(
+                "Failed to use os.sched_getaffinity(0): %s. "
+                "Falling back to os.cpu_count().",
+                e,
+            )
+    if threads is None:
+        threads = os.cpu_count()
+        logger.debug("Using os.cpu_count(): %s threads available", threads)
+    if not isinstance(threads, int) or threads < 1:
+        logger.warning("Could not determine thread count, defaulting to 1")
         threads = 1
-
-    logger.debug(f"threads available: {threads}")
     return threads
 
 

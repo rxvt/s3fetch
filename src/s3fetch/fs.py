@@ -15,7 +15,7 @@ def create_destination_directory(
 
     Args:
         download_dir (Path): The local download base dirctory.
-        object_dir (Union[str, Path]): The directory structure we will create for the
+        object_dir (Optional[str]): The directory structure we will create for the
             object under the base download directory.
         delimiter (str): The delimiter used to split the object key into directories.
 

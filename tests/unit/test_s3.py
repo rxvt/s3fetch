@@ -1,3 +1,4 @@
+import re
 import threading
 from pathlib import Path
 
@@ -43,13 +44,13 @@ def test_not_excluding_non_directory_from_objects(delimiter: str):
 
 @pytest.mark.parametrize("key,", ["my_test_file", "my_dir/my_test_file"])
 def test_skip_keys_containing_only_letters(key: str):
-    result = s3.filter_by_regex(key=key, regex=r"\d")
+    result = s3.filter_by_regex(key=key, regex=re.compile(r"\d"))
     assert result is False
 
 
 @pytest.mark.parametrize("key,", ["my_test_file", "my_dir/my_test_file"])
 def test_include_keys_starting_with_my_(key: str):
-    result = s3.filter_by_regex(key=key, regex=r"^my_")
+    result = s3.filter_by_regex(key=key, regex=re.compile(r"^my_"))
     assert result is True
 
 
@@ -184,11 +185,11 @@ def test_excluding_objects_due_to_regex():
     delimiter = "/"
     key = "my_test_file"
 
-    regex = r"\d"
+    regex = re.compile(r"\d")
     result = s3.exclude_object(key=key, delimiter=delimiter, regex=regex)
     assert result is True
 
-    regex = r"\w"
+    regex = re.compile(r"\w")
     result = s3.exclude_object(key=key, delimiter=delimiter, regex=regex)
     assert result is False
 
@@ -198,7 +199,7 @@ def test_filtering_by_regex_throws_exception():
 
     regex = r"["
     with pytest.raises(RegexError):
-        s3.filter_by_regex(key=key, regex=regex)
+        s3.filter_by_regex(key=key, regex=re.compile(regex))
 
 
 @pytest.mark.parametrize(

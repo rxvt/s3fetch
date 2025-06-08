@@ -1,9 +1,12 @@
 """Filesystem utilities for S3Fetch."""
 
+import logging
 from pathlib import Path
 from typing import Optional
 
 from .exceptions import DirectoryDoesNotExistError
+
+logger = logging.getLogger(__name__)
 
 
 def create_destination_directory(
@@ -28,10 +31,23 @@ def create_destination_directory(
         directories = object_dir.split(delimiter)
         local_download_path = Path(*directories)
         absolute_directory = download_dir / Path(local_download_path)
+        logger.debug(
+            "Creating destination directory with object_dir: '%s', "
+            "delimiter: '%s', resolved path: '%s'",
+            object_dir,
+            delimiter,
+            absolute_directory,
+        )
     else:
         absolute_directory = download_dir
+        logger.debug(
+            "Creating destination directory with no object_dir, "
+            "using base download_dir: '%s'",
+            absolute_directory,
+        )
 
     absolute_directory.mkdir(parents=True, exist_ok=True)
+    logger.info("Ensured directory exists: '%s'", absolute_directory)
     return absolute_directory
 
 
@@ -48,6 +64,8 @@ def check_download_dir_exists(download_dir: Path) -> None:
         DirectoryDoesNotExistError: If the download directory does not exist.
     """
     if not download_dir.is_dir():
+        logger.error("Download directory does not exist: '%s'", download_dir)
         raise DirectoryDoesNotExistError(
             f"The directory '{download_dir}' does not exist."
         )
+    logger.info("Download directory exists: '%s'", download_dir)

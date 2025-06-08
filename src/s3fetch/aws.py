@@ -20,14 +20,10 @@ def calc_connection_pool_size(threads: int, max_concurrency: int) -> int:
     Returns:
         int: Connection pool size.
     """
-    # https://stackoverflow.com/questions/53765366/urllib3-connectionpool-connection-pool-is-full-discarding-connection
-    # https://github.com/boto/botocore/issues/619#issuecomment-461859685
-    # https://urllib3.readthedocs.io/en/latest/reference/urllib3.connection.html#urllib3.connection.HTTPConnectionPool
-    # max_pool_connections is passed to max_size param of urllib3.HTTPConnectionPool()
-    #
-    # The connection pool is shared across all threads so we need to make sure
-    # the connection pool size is large enough to handle all the thread connections
-    # taking into the concurrency of each thread connection.
+    # The connection pool is shared across all threads.
+    # To avoid connection starvation, set the pool size to the greater of:
+    # - botocore's default MAX_POOL_CONNECTIONS
+    # - the total possible concurrent S3 transfers (threads * max_concurrency)
     conn_pool_size = max(
         MAX_POOL_CONNECTIONS,
         threads * max_concurrency,

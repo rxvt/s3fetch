@@ -14,7 +14,7 @@ def create_destination_directory(
     """Create the local destination directory for the object.
 
     Args:
-        download_dir (Path): The local download base dirctory.
+        download_dir (Path): The local download base directory.
         object_dir (Optional[str]): The directory structure we will create for the
             object under the base download directory.
         delimiter (str): The delimiter used to split the object key into directories.

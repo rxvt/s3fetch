@@ -10,12 +10,12 @@ from mypy_boto3_s3.client import S3Client
 logger = logging.getLogger(__name__)
 
 
-def calc_connection_pool_size(threads: int, max_conncurrency: int) -> int:
+def calc_connection_pool_size(threads: int, max_concurrency: int) -> int:
     """Calculate the connection pool size.
 
     Args:
         threads (int): Number of threads to use.
-        max_conncurrency (int): Maximum concurrency per thread.
+        max_concurrency (int): Maximum concurrency per thread.
 
     Returns:
         int: Connection pool size.
@@ -30,7 +30,7 @@ def calc_connection_pool_size(threads: int, max_conncurrency: int) -> int:
     # taking into the concurrency of each thread connection.
     conn_pool_size = max(
         MAX_POOL_CONNECTIONS,
-        threads * max_conncurrency,
+        threads * max_concurrency,
     )
     logger.debug(f"Setting urllib3 ConnectionPool(maxsize={conn_pool_size})")
     return conn_pool_size

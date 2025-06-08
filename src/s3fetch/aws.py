@@ -3,7 +3,7 @@
 import logging
 
 import boto3
-import botocore
+from botocore.config import Config
 from botocore.endpoint import MAX_POOL_CONNECTIONS
 from mypy_boto3_s3.client import S3Client
 
@@ -46,7 +46,7 @@ def get_client(region: str, max_conn_pool: int) -> S3Client:
     Returns:
         S3Client: Boto3 S3 client.
     """
-    client_config = botocore.config.Config(  # type: ignore
+    client_config = Config(
         max_pool_connections=max_conn_pool,
     )
     client = boto3.client("s3", region_name=region, config=client_config)

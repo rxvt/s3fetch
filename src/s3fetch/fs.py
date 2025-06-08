@@ -41,6 +41,9 @@ def check_download_dir_exists(download_dir: Path) -> None:
     Args:
         download_dir (Path): Download directory, e.g. /tmp.
 
+    Returns:
+        None
+
     Raises:
         DirectoryDoesNotExistError: If the download directory does not exist.
     """

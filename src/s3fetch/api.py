@@ -100,15 +100,15 @@ def download_objects(
 
 def create_completed_objects_thread(
     queue: S3FetchQueue,
-    func: Callable,
+    func: Callable[..., None],
     **kwargs: dict,
 ) -> None:
     """Create a thread to monitor for completed objects.
 
     Args:
         queue (S3FetchQueue): FIFO download queue.
-        func (Callable): Function to run in a new thread. Will receive the completed
-            objects queue and any additional kwargs passed.
+        func (Callable[..., None]): Function to run in a new thread. Will receive the
+            completed objects queue and any additional kwargs passed.
         **kwargs: Any additional arguments to pass to `func`.
     """
     logger.debug("Creating completed objects thread")

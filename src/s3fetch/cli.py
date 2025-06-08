@@ -2,12 +2,15 @@
 
 import logging
 import sys
+import threading
 from pathlib import Path
 
 import click
 from botocore.exceptions import ClientError
+from mypy_boto3_s3.client import S3Client
 
 from . import api, aws, s3, utils
+from .api import S3FetchQueue
 from .exceptions import S3FetchError
 from .utils import custom_print as print
 
@@ -84,6 +87,92 @@ def cli(
     )
 
 
+def setup_debug(debug: bool) -> None:
+    """Enable debug output if requested."""
+    if debug:
+        utils.enable_debug()
+
+
+def prepare_download_dir_and_prefix(
+    download_dir: Path, s3_uri: str, delimiter: str
+) -> tuple[Path, str, str]:
+    """Set up the download directory and split the S3 URI into bucket and prefix."""
+    download_dir = utils.set_download_dir(download_dir)
+    bucket, prefix = s3.split_uri_into_bucket_and_prefix(s3_uri, delimiter)
+    return download_dir, bucket, prefix
+
+
+def get_thread_and_pool_size(threads: int) -> tuple[int, int]:
+    """Determine thread count and connection pool size."""
+    if not threads:
+        threads = utils.get_available_threads()
+    conn_pool_size = aws.calc_connection_pool_size(
+        threads,
+        s3.DEFAULT_S3TRANSFER_CONCURRENCY,
+    )
+    return threads, conn_pool_size
+
+
+def create_client_and_queues(
+    region: str, conn_pool_size: int
+) -> tuple[S3Client, S3FetchQueue, S3FetchQueue]:
+    """Create the S3 client and download/completed queues."""
+    download_queue = api.S3FetchQueue()  # TODO: Use factory function
+    completed_queue = api.S3FetchQueue()  # TODO: Use factory function
+    client = aws.get_client(region, conn_pool_size)
+    return client, download_queue, completed_queue
+
+
+def list_objects(
+    client: S3Client,
+    download_queue: S3FetchQueue,
+    bucket: str,
+    prefix: str,
+    delimiter: str,
+    regex: str,
+    exit_event: threading.Event,
+) -> None:
+    """List objects in the S3 bucket and add them to the download queue."""
+    api.list_objects(
+        client=client,
+        download_queue=download_queue,
+        bucket=bucket,
+        prefix=prefix,
+        delimiter=delimiter,
+        regex=regex,
+        exit_event=exit_event,
+    )
+
+
+def download_objects(
+    client: S3Client,
+    threads: int,
+    download_queue: S3FetchQueue,
+    completed_queue: S3FetchQueue,
+    exit_event: threading.Event,
+    bucket: str,
+    prefix: str,
+    download_dir: Path,
+    delimiter: str,
+    download_config: dict,
+    dry_run: bool,
+) -> None:
+    """Download objects from the S3 bucket using the provided configuration."""
+    api.download_objects(
+        client=client,
+        threads=threads,
+        download_queue=download_queue,
+        completed_queue=completed_queue,
+        exit_event=exit_event,
+        bucket=bucket,
+        prefix=prefix,
+        download_dir=download_dir,
+        delimiter=delimiter,
+        download_config=download_config,
+        dry_run=dry_run,
+    )
+
+
 def run_cli(
     s3_uri: str,
     region: str,
@@ -108,57 +197,40 @@ def run_cli(
         delimiter (str): Delimiter for S3 object keys.
         quiet (bool): If True, suppress output to stdout.
     """
-    if debug:
-        utils.enable_debug()
-
-    download_dir = utils.set_download_dir(download_dir)
-    bucket, prefix = s3.split_uri_into_bucket_and_prefix(s3_uri, delimiter)
-
-    if not threads:
-        threads = utils.get_available_threads()
-
-    conn_pool_size = aws.calc_connection_pool_size(
-        threads,
-        s3.DEFAULT_S3TRANSFER_CONCURRENCY,
+    setup_debug(debug)
+    download_dir, bucket, prefix = prepare_download_dir_and_prefix(
+        download_dir, s3_uri, delimiter
     )
-    download_queue = api.S3FetchQueue()
-    completed_queue = api.S3FetchQueue()
-    client = aws.get_client(region, conn_pool_size)
+    threads, conn_pool_size = get_thread_and_pool_size(threads)
+    client, download_queue, completed_queue = create_client_and_queues(
+        region, conn_pool_size
+    )
     exit_event = utils.create_exit_event()
 
     print(f"Starting to list objects from {s3_uri}", quiet)
     try:
-        api.list_objects(
-            client=client,
-            download_queue=download_queue,
-            bucket=bucket,
-            prefix=prefix,
-            delimiter=delimiter,
-            regex=regex,
-            exit_event=exit_event,
+        list_objects(
+            client, download_queue, bucket, prefix, delimiter, regex, exit_event
         )
-
         download_config = s3.create_download_config(callback=None)
-
         if not quiet:
             api.create_completed_objects_thread(
                 queue=completed_queue,
                 func=utils.print_completed_objects,
             )
-
         print("Starting to download objects", quiet)
-        api.download_objects(
-            client=client,
-            threads=threads,
-            download_queue=download_queue,
-            completed_queue=completed_queue,
-            exit_event=exit_event,
-            bucket=bucket,
-            prefix=prefix,
-            download_dir=download_dir,
-            delimiter=delimiter,
-            download_config=download_config,
-            dry_run=dry_run,
+        download_objects(
+            client,
+            threads,
+            download_queue,
+            completed_queue,
+            exit_event,
+            bucket,
+            prefix,
+            download_dir,
+            delimiter,
+            download_config,
+            dry_run,
         )
     except KeyboardInterrupt:
         pass

@@ -579,6 +579,7 @@ def download(
         download_dir=download_dir,
         object_dir=dst_dir,
         delimiter=delimiter,
+        dry_run=dry_run,
     )
 
     dest_filename = absolute_dest_dir / dst_file

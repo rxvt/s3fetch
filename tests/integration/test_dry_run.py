@@ -33,10 +33,6 @@ def test_dry_run_functionality(tmpdir):
 
     download_dir = Path(tmpdir)
 
-    # Ensure directories exist for the dry run
-    (download_dir / "data").mkdir(exist_ok=True)
-    (download_dir / "config").mkdir(exist_ok=True)
-
     # Setup queues
     download_queue = S3FetchQueue()
     completed_queue = S3FetchQueue()
@@ -93,5 +89,7 @@ def test_dry_run_functionality(tmpdir):
     assert len(downloaded_files) == 0, "No files should be downloaded in dry run mode"
 
     # Directories should still be created
-    assert (download_dir / "data").exists(), "Directory structure should be created"
-    assert (download_dir / "config").exists(), "Directory structure should be created"
+    assert not (download_dir / "data").exists(), "Directory structure should be created"
+    assert not (download_dir / "config").exists(), (
+        "Directory structure should be created"
+    )

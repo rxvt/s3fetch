@@ -14,6 +14,7 @@ def create_destination_directory(
     download_dir: Path,
     object_dir: Optional[str],
     delimiter: str,
+    dry_run: bool = False,
 ) -> Path:
     """Create the local destination directory for the object.
 
@@ -22,6 +23,7 @@ def create_destination_directory(
         object_dir (Optional[str]): The directory structure we will create for the
             object under the base download directory.
         delimiter (str): The delimiter used to split the object key into directories.
+        dry_run (bool): If True, don't actually create the directory.
 
     Returns:
         Path: The absolute path to the local destination directory.
@@ -49,8 +51,12 @@ def create_destination_directory(
             absolute_directory,
         )
 
-    absolute_directory.mkdir(parents=True, exist_ok=True)
-    logger.info("Ensured directory exists: '%s'", absolute_directory)
+    if not dry_run:
+        absolute_directory.mkdir(parents=True, exist_ok=True)
+        logger.info("Ensured directory exists: '%s'", absolute_directory)
+    else:
+        logger.info("Dry run: Would create directory: '%s'", absolute_directory)
+
     return absolute_directory
 
 

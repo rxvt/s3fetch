@@ -415,3 +415,25 @@ def test_creating_the_download_config_with_callback():
     result = s3.create_download_config(test_callback)
     assert result.get("Callback")
     assert result.get("Config")
+
+
+@pytest.mark.parametrize(
+    "s3_uri,delimiter,expected_bucket,expected_prefix",
+    [
+        ("s3://my-bucket/my/prefix", "/", "my-bucket", "my/prefix"),
+        ("s3://my-bucket", "/", "my-bucket", ""),
+        ("my-bucket/my/prefix", "/", "my-bucket", "my/prefix"),
+        ("my-bucket", "/", "my-bucket", ""),
+        ("s3://my:bucket:my:prefix", ":", "my", "bucket:my:prefix"),
+        ("s3://my-bucket/", "/", "my-bucket", ""),
+    ],
+)
+def test_split_uri_into_bucket_and_prefix(
+    s3_uri: str, delimiter: str, expected_bucket: str, expected_prefix: str
+):
+    """Test splitting S3 URIs into bucket and prefix components."""
+    bucket, prefix = s3.split_uri_into_bucket_and_prefix(
+        s3_uri=s3_uri, delimiter=delimiter
+    )
+    assert bucket == expected_bucket
+    assert prefix == expected_prefix

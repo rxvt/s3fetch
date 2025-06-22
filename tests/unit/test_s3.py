@@ -238,6 +238,8 @@ def test_rolling_up_object_key_with_invalid_prefix(
         ("my/test/prefix/my_test_file", "/", "my/test/prefix", "my_test_file"),
         ("my/test/prefix/my_test_file", ":", "", "my/test/prefix/my_test_file"),
         ("my:test:prefix:my_test_file", ":", "my:test:prefix", "my_test_file"),
+        ("my_test_file", "/", "", "my_test_file"),
+        ("my_test_file", ":", "", "my_test_file"),
     ],
 )
 def test_splitting_object_key_into_local_directory_and_filename(

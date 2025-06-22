@@ -280,9 +280,10 @@ def test_s3_transfer_config_raises_exception():
 def test_download_object(tmp_path: Path, s3_client: S3Client):
     bucket = "my_bucket"
     key = "my_test_file"
+    test_content = b"test data"
     completion_queue = s3.get_queue("completion")
     s3_client.create_bucket(Bucket=bucket)
-    s3_client.put_object(Bucket=bucket, Key=key, Body=b"test data")
+    s3_client.put_object(Bucket=bucket, Key=key, Body=test_content)
     s3.download(
         client=s3_client,
         bucket=bucket,
@@ -291,10 +292,15 @@ def test_download_object(tmp_path: Path, s3_client: S3Client):
         delimiter="/",
         prefix="",
         download_dir=tmp_path,
-        download_config={},  # TODO: Fix
+        download_config={},
         completed_queue=completion_queue,
     )
-    # TODO: Read data from downloaded file and validate it
+    # Verify downloaded file exists and contains correct content
+    downloaded_file = tmp_path / key
+    assert downloaded_file.exists(), f"Downloaded file {downloaded_file} not found"
+    assert downloaded_file.read_bytes() == test_content, (
+        "File content doesn't match expected data"
+    )
 
 
 def test_creating_the_thread_to_list_objects(s3_client: S3Client):

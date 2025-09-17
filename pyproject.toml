@@ -41,7 +41,7 @@ installer = "uv"
 python = "3.9"
 features = ["test", "dev"]
 
-post-install-commands = ["pre-commit install"]
+post-install-commands = ["hatch run pre-commit install"]
 
 [tool.hatch.envs.hatch-test]
 description = """Testing environment."""

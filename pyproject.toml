@@ -3,13 +3,12 @@ name = "s3fetch"
 dynamic = ["version"]
 description = "Simple & fast multi-threaded S3 download tool."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 keywords = ["aws", "s3"]
 authors = [{ name = "Shane Anderson", email = "shane@reactivate.cx" }]
 classifiers = [
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -38,7 +37,7 @@ General development environment.
 """
 type = "pip-compile"
 installer = "uv"
-python = "3.9"
+python = "3.10"
 features = ["test", "dev"]
 
 post-install-commands = ["hatch run pre-commit install"]
@@ -50,7 +49,7 @@ installer = "uv"
 features = ["test"]
 
 [[tool.hatch.envs.hatch-test.matrix]]
-python = ["3.13", "3.12", "3.11", "3.10", "3.9"]
+python = ["3.13", "3.12", "3.11", "3.10"]
 
 [tool.hatch.envs.default.scripts]
 check_types = "mypy --install-types --non-interactive {args:src/s3fetch tests}"
@@ -86,7 +85,7 @@ source = ["s3fetch"]
 show_missing = true
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 ignore_missing_imports = true
 files = "src/s3fetch, tests"
 

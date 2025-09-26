@@ -1,6 +1,7 @@
 # s3fetch development commands using Hatch
 
 # Default recipe - show available commands
+[private]
 default:
     @just --list
 

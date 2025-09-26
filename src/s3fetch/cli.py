@@ -286,10 +286,31 @@ def run_cli(
             dry_run,
         )
     except KeyboardInterrupt:
-        pass
+        print("\nOperation cancelled by user.", False)  # Always show, even with --quiet
+        sys.exit(1)
     except ClientError as e:
-        raise e
+        error_code = e.response.get("Error", {}).get("Code", "Unknown")
+        if error_code == "NoSuchBucket":
+            print(
+                f"Error: S3 bucket does not exist in the specified URI: {s3_uri}", False
+            )
+            print("Please check the bucket name and try again.", False)
+        elif error_code == "AccessDenied":
+            print(f"Error: Access denied to S3 bucket: {s3_uri}", False)
+            print("Please check your AWS credentials and bucket permissions.", False)
+        elif error_code == "InvalidAccessKeyId":
+            print("Error: Invalid AWS access key ID.", False)
+            print("Please check your AWS credentials configuration.", False)
+        elif error_code == "SignatureDoesNotMatch":
+            print("Error: AWS signature mismatch - invalid secret access key.", False)
+            print("Please check your AWS credentials configuration.", False)
+        else:
+            print(f"Error: AWS API error ({error_code}): {e}", False)
+            print("Please check your AWS configuration and try again.", False)
+        sys.exit(1)
     except S3FetchError as e:
-        if e.args:
-            raise
+        if e.args and str(e.args[0]):
+            print(f"Error: {e.args[0]}", False)
+        else:
+            print("Error: An unexpected error occurred during S3 operation.", False)
         sys.exit(1)

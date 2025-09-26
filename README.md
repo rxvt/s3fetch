@@ -85,7 +85,7 @@ Timed out while listing objects after 60min.
 
 ### Requirements
 
-- Python >= 3.9
+- Python >= 3.10
 - AWS credentials in one of the [standard locations](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-where)
 
 S3Fetch is available on PyPi and can be installed via one of the following methods.
@@ -99,6 +99,26 @@ Ensure you have [pipx](https://pypi.org/project/pipx/) installed, then:
 ### pip
 
 `pip3 install s3fetch`
+
+### Development Installation
+
+For development work on s3fetch:
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/rxvt/s3fetch.git
+   cd s3fetch
+   ```
+
+2. Set up the development environment using hatch:
+   ```bash
+   hatch env create
+   ```
+
+3. Run s3fetch from source:
+   ```bash
+   hatch run s3fetch --help
+   ```
 
 ## Usage
 

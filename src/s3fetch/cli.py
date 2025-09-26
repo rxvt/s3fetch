@@ -1,9 +1,11 @@
 """Command line interface for S3Fetch."""
 
 import logging
+import re
 import sys
 import threading
 from pathlib import Path
+from typing import Optional
 
 import click
 from botocore.exceptions import ClientError
@@ -15,6 +17,129 @@ from .exceptions import S3FetchError
 from .utils import custom_print as print
 
 logger = logging.getLogger(__name__)
+
+
+def validate_s3_uri(s3_uri: str) -> None:
+    """Validate that the S3 URI follows the correct format.
+
+    Args:
+        s3_uri (str): The S3 URI to validate.
+
+    Raises:
+        click.BadParameter: If the S3 URI format is invalid.
+    """
+    if not s3_uri.startswith("s3://"):
+        raise click.BadParameter(
+            f"S3 URI must start with 's3://'. Got: {s3_uri}\n"
+            "Example: s3://my-bucket or s3://my-bucket/my/prefix"
+        )
+
+    # Remove s3:// prefix and check for valid bucket name
+    uri_without_schema = s3_uri[5:]  # Remove "s3://"
+    if not uri_without_schema:
+        raise click.BadParameter(
+            "S3 URI must include a bucket name after 's3://'.\n"
+            "Example: s3://my-bucket or s3://my-bucket/my/prefix"
+        )
+
+    # The bucket name is everything before the first delimiter
+    # We'll do basic validation here, more detailed parsing happens later with the
+    # actual delimiter
+    if not uri_without_schema.strip():
+        raise click.BadParameter(
+            "S3 URI must include a valid bucket name.\n"
+            "Example: s3://my-bucket or s3://my-bucket/my/prefix"
+        )
+
+
+def validate_regex_pattern(regex: Optional[str]) -> None:
+    """Validate that the regex pattern can be compiled.
+
+    Args:
+        regex (Optional[str]): The regex pattern to validate.
+
+    Raises:
+        click.BadParameter: If the regex pattern is invalid.
+    """
+    if regex is not None:
+        try:
+            re.compile(regex)
+        except re.error as e:
+            raise click.BadParameter(
+                f"Invalid regular expression: {e}\n"
+                f"Pattern: {regex}\n"
+                "Please check your regex syntax and try again."
+            ) from None
+
+
+def validate_thread_count(threads: Optional[int]) -> None:
+    """Validate that the thread count is within reasonable bounds.
+
+    Args:
+        threads (Optional[int]): The thread count to validate.
+
+    Raises:
+        click.BadParameter: If the thread count is invalid.
+    """
+    if threads is not None:
+        if threads < 1:
+            raise click.BadParameter(f"Thread count must be at least 1. Got: {threads}")
+        if threads > 1000:
+            raise click.BadParameter(
+                f"Thread count must be 1000 or less. Got: {threads}\n"
+                "Using too many threads may overwhelm your system or hit AWS rate"
+                " limits."
+            )
+
+
+def validate_aws_region(region: str) -> None:
+    """Validate that the AWS region follows expected format.
+
+    Args:
+        region (str): The AWS region to validate.
+
+    Raises:
+        click.BadParameter: If the region format seems invalid.
+    """
+    # Basic AWS region format validation (not exhaustive, but catches obvious errors)
+    region_pattern = r"^[a-z]{2,3}-[a-z]+-\d+$"
+    if not re.match(region_pattern, region):
+        # Don't fail hard on this, just warn, as AWS may add new region formats
+        logger.warning(
+            f"Region '{region}' doesn't match typical AWS region format"
+            " (e.g., 'us-east-1'). This may cause connection issues if the region is "
+            "invalid."
+        )
+
+
+def validate_download_directory(download_dir: Optional[Path]) -> None:
+    """Validate that the download directory exists and is accessible.
+
+    Args:
+        download_dir (Optional[Path]): The download directory to validate.
+
+    Raises:
+        click.BadParameter: If the directory doesn't exist or isn't accessible.
+    """
+    if download_dir is not None:
+        if not download_dir.exists():
+            raise click.BadParameter(
+                f"Download directory does not exist: {download_dir}\n"
+                "Please create the directory or specify a different path."
+            )
+        if not download_dir.is_dir():
+            raise click.BadParameter(
+                f"Path exists but is not a directory: {download_dir}\n"
+                "Please specify a valid directory path."
+            )
+        # Check basic permissions
+        try:
+            download_dir.resolve()  # This will raise if we can't access it
+        except (OSError, PermissionError):
+            raise click.BadParameter(
+                f"Cannot access download directory: {download_dir}\n"
+                "Please check permissions and try again."
+            ) from None
 
 
 @click.command(name="S3Fetch")
@@ -74,6 +199,13 @@ def cli(
 
     You can download all objects in a bucket by using `s3fetch s3://my-test-bucket/`
     """
+    # Validate all input parameters before proceeding
+    validate_s3_uri(s3_uri)
+    validate_regex_pattern(regex)
+    validate_thread_count(threads)
+    validate_aws_region(region)
+    validate_download_directory(download_dir)
+
     run_cli(
         s3_uri=s3_uri,
         region=region,

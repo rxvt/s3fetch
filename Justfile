@@ -17,8 +17,8 @@ run *args:
 
 # Testing
 # Run all tests
-test:
-    hatch run pytest
+test *args:
+    hatch test {{args}}
 
 # Run unit tests only
 test-unit:

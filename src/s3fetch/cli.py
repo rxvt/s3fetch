@@ -195,14 +195,35 @@ def cli(
     delimiter: str,
     quiet: bool,
 ) -> None:
-    """Easily download objects from an S3 bucket.
+    r"""Efficiently download objects from AWS S3 buckets with concurrent downloads.
 
-    Example: s3fetch s3://my-test-bucket/my/birthday-photos/2020-01-01
+    S3_URI should be in format: s3://bucket-name/optional/prefix/path
 
-    The above will download all S3 objects located under the
-    `my/birthday-photos/2020-01-01` prefix.
+    \b
+    Examples:
+      # Download entire bucket
+      s3fetch s3://my-bucket/
 
-    You can download all objects in a bucket by using `s3fetch s3://my-test-bucket/`
+      # Download specific folder
+      s3fetch s3://my-bucket/photos/2023/
+
+      # Download with custom settings
+      s3fetch s3://my-bucket/logs/ --threads 20 --region eu-west-1
+
+      # Filter by file type using regex
+      s3fetch s3://my-bucket/images/ --regex ".*\\.(jpg|png)$"
+
+      # Preview what would be downloaded
+      s3fetch s3://my-bucket/data/ --dry-run
+
+      # Download to specific directory
+      s3fetch s3://my-bucket/backup/ --download-dir ./local-backup
+
+    \b
+    Common patterns:
+      --regex ".*\\.pdf$"           # PDF files only
+      --regex "2023-.*"             # Files starting with "2023-"
+      --regex "(?i).*\\.(jpg|jpeg)$" # JPEG files (case insensitive)
     """
     # Configure logging for CLI usage
     setup_logging(debug)

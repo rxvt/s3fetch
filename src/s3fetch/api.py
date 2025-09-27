@@ -3,7 +3,7 @@
 import logging
 import threading
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 from mypy_boto3_s3.client import S3Client
 
@@ -21,6 +21,7 @@ def list_objects(
     delimiter: str,
     regex: Optional[str],
     exit_event: threading.Event,
+    progress_tracker: Optional[Any] = None,  # noqa: ANN401
 ) -> None:
     """Starts a seperate thread that lists of objects from the specified S3 bucket.
 
@@ -36,6 +37,7 @@ def list_objects(
         delimiter (str): Delimiter for the logical folder hierarchy.
         regex (Optional[str]): Regular expression to use for filtering objects.
         exit_event (threading.Event): Notify that script to exit.
+        progress_tracker (Optional[Any]): Progress tracker instance.
     """
     list_objects_thread = s3.create_list_objects_thread(
         bucket=bucket,
@@ -45,6 +47,7 @@ def list_objects(
         delimiter=delimiter,
         regex=regex,
         exit_event=exit_event,
+        progress_tracker=progress_tracker,
     )
     list_objects_thread.start()
 
@@ -57,10 +60,11 @@ def download_objects(
     exit_event: threading.Event,
     bucket: str,
     prefix: str,
-    download_dir: Path,
+    download_dir: Union[str, Path],
     delimiter: str,
     download_config: dict,
     dry_run: bool = False,
+    progress_tracker: Optional[Any] = None,  # noqa: ANN401
 ) -> Tuple[int, list]:
     """Download objects from S3 bucket.
 
@@ -72,14 +76,19 @@ def download_objects(
         exit_event (threading.Event): Notify that script to exit.
         bucket (str): S3 bucket name, e.g. my-bucket.
         prefix (str): S3 object key prefix, e.g. my-folder/.
-        download_dir (Path): Destination directory, e.g. /tmp.
+        download_dir (Union[str, Path]): Destination directory, e.g. /tmp.
         delimiter (str): S3 object key delimiter.
         download_config (dict): Download configuration.
         dry_run (bool): Run in dry run mode.
+        progress_tracker (Optional[Any]): Progress tracker instance.
 
     Returns:
         Tuple[int, list]: Number of successful downloads and list of failed downloads.
     """
+    # Convert string to Path if needed
+    if isinstance(download_dir, str):
+        download_dir = Path(download_dir)
+
     stats = s3.create_download_threads(
         client=client,
         threads=threads,
@@ -92,6 +101,7 @@ def download_objects(
         delimiter=delimiter,
         download_config=download_config,
         dry_run=dry_run,
+        progress_tracker=progress_tracker,
     )
 
     success, failures = stats

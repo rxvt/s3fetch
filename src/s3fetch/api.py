@@ -3,7 +3,7 @@
 import logging
 import threading
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 from mypy_boto3_s3.client import S3Client
 
@@ -101,7 +101,7 @@ def download_objects(
 def create_completed_objects_thread(
     queue: S3FetchQueue,
     func: Callable[..., None],
-    **kwargs: dict,
+    **kwargs: Dict[str, Any],
 ) -> None:
     """Create a thread to monitor for completed objects.
 

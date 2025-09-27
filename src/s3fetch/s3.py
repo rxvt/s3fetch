@@ -6,7 +6,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from queue import Queue
-from typing import Callable, Generator, Optional, Pattern, Tuple
+from typing import Any, Callable, Dict, Generator, Optional, Pattern, Tuple
 
 import boto3
 from boto3.s3.transfer import TransferConfig
@@ -475,16 +475,16 @@ def create_s3_transfer_config(
     return s3transfer_config
 
 
-def create_download_config(callback: Optional[Callable] = None) -> dict:
+def create_download_config(callback: Optional[Callable] = None) -> Dict[str, Any]:
     """Create a download configuration.
 
     Args:
         callback (Optional[Callable]): Callback function.
 
     Returns:
-        dict: Download configuration.
+        Dict[str, Any]: Download configuration.
     """
-    extra_kwargs = {}
+    extra_kwargs: Dict[str, Any] = {}
 
     transfer_config = create_s3_transfer_config(
         use_threads=True,

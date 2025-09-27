@@ -199,6 +199,9 @@ def cli(
 
     You can download all objects in a bucket by using `s3fetch s3://my-test-bucket/`
     """
+    # Configure logging for CLI usage
+    setup_logging(debug)
+
     # Validate all input parameters before proceeding
     validate_s3_uri(s3_uri)
     validate_regex_pattern(regex)
@@ -219,14 +222,10 @@ def cli(
     )
 
 
-def setup_debug(debug: bool) -> None:
-    """Enable debug output if requested.
-
-    Args:
-        debug (bool): Enable debug output if True.
-    """
-    if debug:
-        utils.enable_debug()
+def setup_logging(debug: bool = False) -> None:
+    """Configure logging for CLI usage."""
+    level = logging.DEBUG if debug else logging.WARNING
+    logging.basicConfig(level=level)
 
 
 def prepare_download_dir_and_prefix(
@@ -382,7 +381,6 @@ def run_cli(
         delimiter (str): Delimiter for S3 object keys.
         quiet (bool): If True, suppress output to stdout.
     """
-    setup_debug(debug)
     download_dir, bucket, prefix = prepare_download_dir_and_prefix(
         download_dir, s3_uri, delimiter
     )

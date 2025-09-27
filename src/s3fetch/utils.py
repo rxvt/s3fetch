@@ -68,13 +68,6 @@ def create_exit_event() -> threading.Event:
     return threading.Event()
 
 
-def enable_debug() -> None:
-    """Enable debug logging."""
-    from s3fetch import logger as tmp_logger
-
-    tmp_logger.setLevel(logging.DEBUG)
-
-
 def custom_print(msg: str, quiet: bool) -> None:
     """Print message."""
     if not quiet:

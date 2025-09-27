@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This project uses Hatch for dependency management and task running:
 
 - **Install dependencies**: `hatch env create` (creates default environment with dev/test dependencies)
-- **Run tests**: `hatch run pytest` (runs all tests) or `hatch run test_unit`, `hatch run test_integration`, `hatch run test_e2e`
+- **Run tests**: `hatch test -a` (runs all tests for all Python versions) or `hatch run test_unit`, `hatch run test_integration`, `hatch run test_e2e`
 - **Type checking**: `hatch run check_types` (runs mypy on src/s3fetch and tests)
 - **Linting/formatting**: `ruff check` and `ruff format` (configured in pyproject.toml)
 - **Run the CLI**: `hatch run s3fetch <args>` or install with `pipx install -e .`
@@ -50,3 +50,4 @@ s3fetch is a multi-threaded S3 download tool with these core components:
 - Tests include unit, integration, and e2e categories
 - Ruff configuration includes strict linting rules (Google docstring convention)
 - Always prompt for confirmation before making changes (per Copilot instructions)
+- Always run tests after making changes using `hatch test -a`

@@ -3,14 +3,67 @@
 import logging
 import os
 import threading
+import time
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 from . import fs
 from .exceptions import S3FetchQueueClosed
 from .s3 import S3FetchQueue
 
 logger = logging.getLogger(__name__)
+
+
+class ProgressTracker:
+    """Thread-safe progress tracking for s3fetch operations.
+
+    Tracks objects found (single-threaded) and objects/bytes downloaded
+    (multi-threaded).
+    """
+
+    def __init__(self) -> None:
+        """Initialize progress tracking counters."""
+        self.objects_found = 0  # No lock needed - single-threaded listing
+        self.objects_downloaded = 0
+        self.bytes_downloaded = 0
+        self._download_lock = threading.Lock()  # Only for download counters
+        self.start_time = time.time()
+
+    def increment_found(self) -> None:
+        """Increment objects found counter (called from single listing thread)."""
+        self.objects_found += 1
+
+    def increment_downloaded(self, bytes_count: int) -> None:
+        """Increment downloaded counters (called from multiple download threads).
+
+        Args:
+            bytes_count: Number of bytes downloaded for this object.
+        """
+        with self._download_lock:
+            self.objects_downloaded += 1
+            self.bytes_downloaded += bytes_count
+
+    def get_stats(self) -> Dict[str, float]:
+        """Get current progress statistics.
+
+        Returns:
+            Dict with keys: objects_found, objects_downloaded, bytes_downloaded,
+            elapsed_time, download_speed_mbps
+        """
+        with self._download_lock:
+            downloaded = self.objects_downloaded
+            bytes_dl = self.bytes_downloaded
+
+        elapsed = time.time() - self.start_time
+        speed_mbps = (bytes_dl / (1024 * 1024)) / elapsed if elapsed > 0 else 0.0
+
+        return {
+            "objects_found": self.objects_found,
+            "objects_downloaded": downloaded,
+            "bytes_downloaded": bytes_dl,
+            "elapsed_time": elapsed,
+            "download_speed_mbps": speed_mbps,
+        }
 
 
 def set_download_dir(download_dir: Optional[Path]) -> Path:

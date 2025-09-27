@@ -87,6 +87,7 @@ def create_list_objects_thread(
     delimiter: str,
     regex: Optional[str],
     exit_event: threading.Event,
+    progress_tracker: Optional[Any] = None,  # noqa: ANN401
 ) -> threading.Thread:
     """Starts a seperate thread that lists of objects from the specified S3 bucket.
 
@@ -102,6 +103,7 @@ def create_list_objects_thread(
         delimiter (str): Delimiter for the logical folder hierarchy.
         regex (Optional[str]): Regular expression to use for filtering objects.
         exit_event (threading.Event): Notify that script to exit.
+        progress_tracker (Optional[Any]): Progress tracker instance.
 
     Returns:
        threading.Thread: Thread that lists the objects in the bucket.
@@ -117,6 +119,7 @@ def create_list_objects_thread(
             "delimiter": delimiter,
             "regex": regex,
             "exit_event": exit_event,
+            "progress_tracker": progress_tracker,
         },
     )
     return list_objects_thread
@@ -134,6 +137,7 @@ def create_download_threads(
     delimiter: str,
     download_config: dict,
     dry_run: bool = False,
+    progress_tracker: Optional[Any] = None,  # noqa: ANN401
 ) -> Tuple[int, list]:
     """Create download threads.
 
@@ -149,6 +153,7 @@ def create_download_threads(
         delimiter (str): S3 object key delimiter, e.g. `/`.
         download_config (dict): Download configuration.
         dry_run (bool): Run in dry run mode.
+        progress_tracker (Optional[Any]): Progress tracker instance.
 
     Returns:
         Tuple[int, list]: _description_
@@ -173,6 +178,7 @@ def create_download_threads(
                         download_config=download_config,
                         completed_queue=completed_queue,
                         dry_run=dry_run,
+                        progress_tracker=progress_tracker,
                     )
                 except S3FetchQueueClosed:
                     break
@@ -215,6 +221,7 @@ def list_objects(
     delimiter: str,
     regex: Optional[str],
     exit_event: threading.Event,
+    progress_tracker: Optional[Any] = None,  # noqa: ANN401
 ) -> None:
     """List objects in an S3 bucket prefixed by `prefix`.
 
@@ -226,6 +233,7 @@ def list_objects(
         delimiter (str): Delimiter for the logical folder hierarchy.
         regex (Optional[str]): Regular expression to use for filtering objects.
         exit_event (threading.Event): Notify that script to exit.
+        progress_tracker (Optional[Any]): Progress tracker instance.
 
     Raises:
         InvalidCredentialsError: Raised if AWS credentials are invalid.
@@ -247,7 +255,7 @@ def list_objects(
                 raise SystemExit
             if exclude_object(obj_key, delimiter, compiled_regex):
                 continue
-            add_object_to_download_queue(obj_key, queue)
+            add_object_to_download_queue(obj_key, queue, progress_tracker)
         close_download_queue(queue)
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code")
@@ -361,14 +369,21 @@ def filter_by_regex(key: str, regex: Pattern) -> bool:
     return False
 
 
-def add_object_to_download_queue(key: str, queue: S3FetchQueue) -> None:
+def add_object_to_download_queue(
+    key: str,
+    queue: S3FetchQueue,
+    progress_tracker: Optional[Any] = None,  # noqa: ANN401
+) -> None:
     """Add S3 object to download queue.
 
     Args:
         key (str): S3 object key.
         queue (S3FetchQueue): FIFO download queue.
+        progress_tracker (Optional[Any]): Progress tracker instance.
     """
     queue.put(key)
+    if progress_tracker is not None:
+        progress_tracker.increment_found()
     logger.debug("Added %s to download queue", key)
 
 
@@ -517,6 +532,7 @@ def download_object(
     download_config: dict,
     completed_queue: S3FetchQueue,
     dry_run: bool = False,
+    progress_tracker: Optional[Any] = None,  # noqa: ANN401
 ) -> None:
     """Download an object from S3.
 
@@ -528,6 +544,7 @@ def download_object(
         download_config (dict): Download configuration.
         completed_queue (S3FetchQueue): Completed download queue.
         dry_run (bool): Run in dry run mode.
+        progress_tracker (Optional[Any]): Progress tracker instance.
 
     Raises:
         InvalidCredentialsError: Raised when AWS credentials are invalid.
@@ -565,6 +582,12 @@ def download_object(
         ) from e
     else:
         logger.debug(f"Downloaded {key} to {dest_filename}")
+        if progress_tracker is not None and not dry_run:
+            try:
+                file_size = dest_filename.stat().st_size
+                progress_tracker.increment_downloaded(file_size)
+            except OSError:
+                logger.warning(f"Could not get file size for {dest_filename}")
         completed_queue.put(key)
 
 
@@ -579,6 +602,7 @@ def download(
     download_config: dict,
     completed_queue: S3FetchQueue,
     dry_run: bool = False,
+    progress_tracker: Optional[Any] = None,  # noqa: ANN401
 ) -> None:
     """Download an object from S3.
 
@@ -595,6 +619,7 @@ def download(
         download_config (dict): Download configuration.
         completed_queue (S3FetchQueue): Completed download queue.
         dry_run (bool): Run in dry run mode.
+        progress_tracker (Optional[Any]): Progress tracker instance.
 
     Raises:
         PermissionError: Raised when there is a permission error.
@@ -624,6 +649,7 @@ def download(
         download_config=download_config,
         completed_queue=completed_queue,
         dry_run=dry_run,
+        progress_tracker=progress_tracker,
     )
 
 

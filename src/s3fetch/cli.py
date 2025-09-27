@@ -389,7 +389,7 @@ def download_objects(
     )
 
 
-def run_cli(
+def run_cli(  # noqa: C901
     s3_uri: str,
     region: str,
     debug: bool,
@@ -453,22 +453,51 @@ def run_cli(
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "Unknown")
         if error_code == "NoSuchBucket":
+            print(f"Error: S3 bucket does not exist: {s3_uri}", False)
+            print("Suggestions:", False)
+            print("  • Double-check the bucket name for typos", False)
+            print("  • Verify the bucket exists in the specified region", False)
             print(
-                f"Error: S3 bucket does not exist in the specified URI: {s3_uri}", False
+                f"  • Try: aws s3 ls {s3_uri.split('/')[0] + '//' + s3_uri.split('/')[2]} --region {region}",  # noqa: E501
+                False,
             )
-            print("Please check the bucket name and try again.", False)
         elif error_code == "AccessDenied":
             print(f"Error: Access denied to S3 bucket: {s3_uri}", False)
-            print("Please check your AWS credentials and bucket permissions.", False)
+            print("Possible solutions:", False)
+            print("  • Check your AWS credentials: aws sts get-caller-identity", False)
+            print(
+                "  • Verify bucket permissions allow s3:ListBucket and s3:GetObject",
+                False,
+            )
+            print("  • Ensure you're using the correct AWS profile", False)
         elif error_code == "InvalidAccessKeyId":
             print("Error: Invalid AWS access key ID.", False)
-            print("Please check your AWS credentials configuration.", False)
+            print("Fix your credentials:", False)
+            print("  • Run: aws configure", False)
+            print(
+                "  • Or set environment variables: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY",  # noqa: E501
+                False,
+            )
         elif error_code == "SignatureDoesNotMatch":
-            print("Error: AWS signature mismatch - invalid secret access key.", False)
-            print("Please check your AWS credentials configuration.", False)
+            print("Error: Invalid AWS secret access key.", False)
+            print("Fix your credentials:", False)
+            print("  • Run: aws configure", False)
+            print("  • Verify your AWS_SECRET_ACCESS_KEY is correct", False)
+        elif error_code == "NoCredentialsError":
+            print("Error: No AWS credentials found.", False)
+            print("Set up credentials:", False)
+            print("  • Run: aws configure", False)
+            print("  • Or use IAM roles if running on EC2", False)
+            print(
+                "  • Or set environment variables: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY",  # noqa: E501
+                False,
+            )
         else:
             print(f"Error: AWS API error ({error_code}): {e}", False)
-            print("Please check your AWS configuration and try again.", False)
+            print("Troubleshooting steps:", False)
+            print("  • Check your internet connection", False)
+            print("  • Verify AWS region is correct", False)
+            print("  • Try again in a few moments", False)
         sys.exit(1)
     except S3FetchError as e:
         if e.args and str(e.args[0]):

@@ -1,6 +1,7 @@
 import re
 import threading
 from pathlib import Path
+from unittest.mock import patch
 
 import boto3
 import pytest
@@ -10,6 +11,7 @@ from mypy_boto3_s3.client import S3Client
 from s3fetch import s3
 from s3fetch.exceptions import (
     InvalidCredentialsError,
+    PermissionError,
     PrefixDoesNotExistError,
     S3FetchQueueClosed,
 )
@@ -129,6 +131,213 @@ def test_listing_objects_with_no_credentials():
             regex=None,
             exit_event=exit_event,
         )
+
+
+def test_listing_objects_with_invalid_access_key_id(s3_client):
+    from botocore.exceptions import ClientError
+
+    bucket = "my_bucket"
+    queue = s3.get_queue("download")
+    exit_event = threading.Event()
+
+    # Mock a ClientError with InvalidAccessKeyId
+    error_response = {
+        "Error": {
+            "Code": "InvalidAccessKeyId",
+            "Message": "The AWS Access Key Id you provided does not exist in our "
+            "records.",
+        }
+    }
+    client_error = ClientError(error_response, "ListObjectsV2")
+
+    with patch.object(s3_client, "get_paginator") as mock_paginator:
+        mock_paginator.side_effect = client_error
+
+        with pytest.raises(
+            InvalidCredentialsError, match="Invalid AWS credentials: InvalidAccessKeyId"
+        ):
+            s3.list_objects(
+                client=s3_client,
+                queue=queue,
+                bucket=bucket,
+                prefix="",
+                delimiter="/",
+                regex=None,
+                exit_event=exit_event,
+            )
+    queue.close()
+
+
+def test_listing_objects_with_signature_mismatch(s3_client):
+    from botocore.exceptions import ClientError
+
+    bucket = "my_bucket"
+    queue = s3.get_queue("download")
+    exit_event = threading.Event()
+
+    # Mock a ClientError with SignatureDoesNotMatch
+    error_response = {
+        "Error": {
+            "Code": "SignatureDoesNotMatch",
+            "Message": "The request signature we calculated does not match the "
+            "signature you provided.",
+        }
+    }
+    client_error = ClientError(error_response, "ListObjectsV2")
+
+    with patch.object(s3_client, "get_paginator") as mock_paginator:
+        mock_paginator.side_effect = client_error
+
+        with pytest.raises(
+            InvalidCredentialsError,
+            match="Invalid AWS credentials: SignatureDoesNotMatch",
+        ):
+            s3.list_objects(
+                client=s3_client,
+                queue=queue,
+                bucket=bucket,
+                prefix="",
+                delimiter="/",
+                regex=None,
+                exit_event=exit_event,
+            )
+    queue.close()
+
+
+def test_listing_objects_with_token_refresh_required(s3_client):
+    from botocore.exceptions import ClientError
+
+    bucket = "my_bucket"
+    queue = s3.get_queue("download")
+    exit_event = threading.Event()
+
+    # Mock a ClientError with TokenRefreshRequired
+    error_response = {
+        "Error": {
+            "Code": "TokenRefreshRequired",
+            "Message": "The provided token must be refreshed.",
+        }
+    }
+    client_error = ClientError(error_response, "ListObjectsV2")
+
+    with patch.object(s3_client, "get_paginator") as mock_paginator:
+        mock_paginator.side_effect = client_error
+
+        with pytest.raises(
+            InvalidCredentialsError,
+            match="SSO token has expired and needs to be refreshed",
+        ):
+            s3.list_objects(
+                client=s3_client,
+                queue=queue,
+                bucket=bucket,
+                prefix="",
+                delimiter="/",
+                regex=None,
+                exit_event=exit_event,
+            )
+    queue.close()
+
+
+def test_listing_objects_with_access_denied(s3_client):
+    from botocore.exceptions import ClientError
+
+    bucket = "my_bucket"
+    queue = s3.get_queue("download")
+    exit_event = threading.Event()
+
+    # Mock a ClientError with AccessDenied
+    error_response = {"Error": {"Code": "AccessDenied", "Message": "Access Denied"}}
+    client_error = ClientError(error_response, "ListObjectsV2")
+
+    with patch.object(s3_client, "get_paginator") as mock_paginator:
+        mock_paginator.side_effect = client_error
+
+        with pytest.raises(PermissionError, match="Access denied: AccessDenied"):
+            s3.list_objects(
+                client=s3_client,
+                queue=queue,
+                bucket=bucket,
+                prefix="",
+                delimiter="/",
+                regex=None,
+                exit_event=exit_event,
+            )
+    queue.close()
+
+
+def test_download_object_with_invalid_credentials(s3_client, tmp_path):
+    from botocore.exceptions import ClientError
+
+    key = "test_key"
+    dest_filename = tmp_path / "test_file"
+    bucket = "test_bucket"
+    download_config = {}
+    completed_queue = s3.get_queue("completion")
+
+    # Mock a ClientError with InvalidAccessKeyId during download
+    error_response = {
+        "Error": {
+            "Code": "InvalidAccessKeyId",
+            "Message": "The AWS Access Key Id you provided does not exist in our "
+            "records.",
+        }
+    }
+    client_error = ClientError(error_response, "GetObject")
+
+    with patch.object(s3_client, "download_file") as mock_download:
+        mock_download.side_effect = client_error
+
+        with pytest.raises(
+            InvalidCredentialsError,
+            match="Invalid AWS credentials during download: InvalidAccessKeyId",
+        ):
+            s3.download_object(
+                key=key,
+                dest_filename=dest_filename,
+                client=s3_client,
+                bucket=bucket,
+                download_config=download_config,
+                completed_queue=completed_queue,
+                dry_run=False,
+            )
+    completed_queue.close()
+
+
+def test_download_object_with_sso_token_expired(s3_client, tmp_path):
+    from botocore.exceptions import ClientError
+
+    key = "test_key"
+    dest_filename = tmp_path / "test_file"
+    bucket = "test_bucket"
+    download_config = {}
+    completed_queue = s3.get_queue("completion")
+
+    # Mock a ClientError with TokenRefreshRequired during download
+    error_response = {
+        "Error": {
+            "Code": "TokenRefreshRequired",
+            "Message": "The provided token must be refreshed.",
+        }
+    }
+    client_error = ClientError(error_response, "GetObject")
+
+    with patch.object(s3_client, "download_file") as mock_download:
+        mock_download.side_effect = client_error
+
+        with pytest.raises(
+            InvalidCredentialsError, match="SSO token has expired during download"
+        ):
+            s3.download_object(
+                key=key,
+                dest_filename=dest_filename,
+                client=s3_client,
+                bucket=bucket,
+                download_config=download_config,
+                completed_queue=completed_queue,
+                dry_run=False,
+            )
+    completed_queue.close()
 
 
 def test_calling_exit_event_while_listing_objects(s3_client: S3Client):

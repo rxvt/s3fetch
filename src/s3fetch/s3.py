@@ -250,10 +250,21 @@ def list_objects(
             add_object_to_download_queue(obj_key, queue)
         close_download_queue(queue)
     except ClientError as e:
-        if e.response.get("Error", {}).get("Code") == "InvalidAccessKeyId":
-            raise InvalidCredentialsError(e) from e
-        elif e.response.get("Error", {}).get("Code") == "AccessDenied":
-            raise PermissionError(e) from e
+        error_code = e.response.get("Error", {}).get("Code")
+        if error_code in (
+            "InvalidAccessKeyId",
+            "SignatureDoesNotMatch",
+            "InvalidUserID.NotFound",
+        ):
+            raise InvalidCredentialsError(
+                f"Invalid AWS credentials: {error_code}"
+            ) from e
+        elif error_code == "TokenRefreshRequired":
+            raise InvalidCredentialsError(
+                "SSO token has expired and needs to be refreshed"
+            ) from e
+        elif error_code in ("AccessDenied", "UnauthorizedOperation"):
+            raise PermissionError(f"Access denied: {error_code}") from e
         else:
             raise e
     logger.debug("Finished adding objects to download queue")
@@ -519,6 +530,7 @@ def download_object(
         dry_run (bool): Run in dry run mode.
 
     Raises:
+        InvalidCredentialsError: Raised when AWS credentials are invalid.
         PermissionError: Raised when there is a permission error.
     """
     try:
@@ -529,6 +541,24 @@ def download_object(
                 Filename=str(dest_filename),
                 **download_config,
             )
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code")
+        if error_code in (
+            "InvalidAccessKeyId",
+            "SignatureDoesNotMatch",
+            "InvalidUserID.NotFound",
+        ):
+            raise InvalidCredentialsError(
+                f"Invalid AWS credentials during download: {error_code}"
+            ) from e
+        elif error_code == "TokenRefreshRequired":
+            raise InvalidCredentialsError(
+                "SSO token has expired during download"
+            ) from e
+        elif error_code in ("AccessDenied", "UnauthorizedOperation"):
+            raise PermissionError(f"Access denied during download: {error_code}") from e
+        else:
+            raise e
     except PermissionError as e:
         raise PermissionError(
             f"Permission error when attempting to write object to {dest_filename}"

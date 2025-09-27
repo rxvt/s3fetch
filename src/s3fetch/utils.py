@@ -121,10 +121,17 @@ def create_exit_event() -> threading.Event:
     return threading.Event()
 
 
-def custom_print(msg: str, quiet: bool) -> None:
-    """Print message."""
+def custom_print(msg: str, quiet: bool, *, end: str = "\n", flush: bool = True) -> None:
+    """Print message with configurable formatting.
+
+    Args:
+        msg: Message to print
+        quiet: If True, suppress output
+        end: String appended after the message (default: newline)
+        flush: Whether to forcibly flush the output stream
+    """
     if not quiet:
-        print(msg, flush=True)
+        print(msg, end=end, flush=flush)
 
 
 def print_completed_objects(queue: S3FetchQueue) -> None:

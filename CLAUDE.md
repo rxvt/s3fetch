@@ -52,3 +52,4 @@ s3fetch is a multi-threaded S3 download tool with these core components:
 - Always prompt for confirmation before making changes (per Copilot instructions)
 - Always run tests after making changes using `hatch test -a`
 - Max line length is 88
+- When searching over files respect the `.gitignore` file

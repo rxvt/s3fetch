@@ -210,36 +210,13 @@ def cli(
     quiet: bool,
     progress: str,
 ) -> None:
-    r"""Efficiently download objects from AWS S3 buckets with concurrent downloads.
+    """Concurrently download objects from S3 buckets.
 
-    S3_URI should be in format: s3://bucket-name/optional/prefix/path
-
-    \b
-    Examples:
-      # Download entire bucket
-      s3fetch s3://my-bucket/
-
-      # Download specific folder
-      s3fetch s3://my-bucket/photos/2023/
-
-      # Download with custom settings
-      s3fetch s3://my-bucket/logs/ --threads 20 --region eu-west-1
-
-      # Filter by file type using regex
-      s3fetch s3://my-bucket/images/ --regex ".*\\.(jpg|png)$"
-
-      # Preview what would be downloaded
-      s3fetch s3://my-bucket/data/ --dry-run
-
-      # Download to specific directory
-      s3fetch s3://my-bucket/backup/ --download-dir ./local-backup
-
-    \b
-    Common patterns:
-      --regex ".*\\.pdf$"           # PDF files only
-      --regex "2023-.*"             # Files starting with "2023-"
-      --regex "(?i).*\\.(jpg|jpeg)$" # JPEG files (case insensitive)
-    """
+    Examples:\n
+      s3fetch s3://my-bucket/\n
+      s3fetch s3://my-bucket/photos/ --regex ".*\\.jpg$"\n
+      s3fetch s3://my-bucket/data/ --dry-run --threads 10\n
+    """  # noqa: D301
     # Configure logging for CLI usage
     setup_logging(debug)
 

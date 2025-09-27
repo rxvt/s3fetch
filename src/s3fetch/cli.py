@@ -4,8 +4,9 @@ import logging
 import re
 import sys
 import threading
+import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import click
 from botocore.exceptions import ClientError
@@ -14,6 +15,7 @@ from mypy_boto3_s3.client import S3Client
 from . import api, aws, s3, utils
 from .api import S3FetchQueue
 from .exceptions import S3FetchError
+from .utils import ProgressTracker
 from .utils import custom_print as print
 
 logger = logging.getLogger(__name__)
@@ -190,6 +192,12 @@ def validate_download_directory(download_dir: Optional[Path]) -> None:
     help="Object key delimiter for path structure. Defaults to '/'.",
 )
 @click.option("-q", "--quiet", is_flag=True, help="Suppress all output except errors.")
+@click.option(
+    "--progress",
+    type=click.Choice(["none", "simple", "detailed"], case_sensitive=False),
+    default="none",
+    help="Show download progress. 'simple' shows basic stats, 'detailed' shows real-time updates.",  # noqa: E501
+)
 def cli(
     s3_uri: str,
     region: str,
@@ -200,6 +208,7 @@ def cli(
     dry_run: bool,
     delimiter: str,
     quiet: bool,
+    progress: str,
 ) -> None:
     r"""Efficiently download objects from AWS S3 buckets with concurrent downloads.
 
@@ -251,6 +260,7 @@ def cli(
         dry_run=dry_run,
         delimiter=delimiter,
         quiet=quiet,
+        progress=progress,
     )
 
 
@@ -315,6 +325,57 @@ def create_client_and_queues(
     return client, download_queue, completed_queue
 
 
+def start_progress_monitoring(
+    progress_tracker: ProgressTracker, exit_event: threading.Event
+) -> threading.Thread:
+    """Start a background thread to monitor and display progress updates.
+
+    Args:
+        progress_tracker: The ProgressTracker instance to monitor
+        exit_event: Event to signal when to stop monitoring
+
+    Returns:
+        The monitoring thread
+    """
+
+    def monitor_progress() -> None:
+        """Monitor progress and print periodic updates."""
+        while not exit_event.is_set():
+            stats = progress_tracker.get_stats()
+            # Clear the line and print progress update using enhanced custom_print
+            print(
+                f"\r[Found: {stats['objects_found']} | "
+                f"Downloaded: {stats['objects_downloaded']} | "
+                f"Speed: {stats['download_speed_mbps']:.1f} MB/s]",
+                False,
+                end="",
+            )
+            time.sleep(2)  # Update every 2 seconds
+
+    progress_thread = threading.Thread(target=monitor_progress, daemon=True)
+    progress_thread.start()
+    return progress_thread
+
+
+def print_progress_summary(progress_tracker: ProgressTracker, quiet: bool) -> None:
+    """Print final progress summary.
+
+    Args:
+        progress_tracker: The ProgressTracker instance with final stats
+        quiet: Whether to suppress output
+    """
+    if progress_tracker is None:
+        return
+
+    stats = progress_tracker.get_stats()
+    print("\nProgress Summary:", quiet)
+    print(f"  Objects found: {stats['objects_found']}", quiet)
+    print(f"  Objects downloaded: {stats['objects_downloaded']}", quiet)
+    print(f"  Total data: {stats['bytes_downloaded'] / (1024 * 1024):.1f} MB", quiet)
+    print(f"  Average speed: {stats['download_speed_mbps']:.1f} MB/s", quiet)
+    print(f"  Total time: {stats['elapsed_time']:.1f} seconds", quiet)
+
+
 def list_objects(
     client: S3Client,
     download_queue: S3FetchQueue,
@@ -323,6 +384,7 @@ def list_objects(
     delimiter: str,
     regex: str,
     exit_event: threading.Event,
+    progress_tracker: Optional[Any] = None,  # noqa: ANN401
 ) -> None:
     """List objects in the S3 bucket and add them to the download queue.
 
@@ -334,6 +396,7 @@ def list_objects(
         delimiter (str): Delimiter for S3 object keys.
         regex (str): Regex pattern to filter objects.
         exit_event (threading.Event): Event to signal exit.
+        progress_tracker (Optional[Any]): Progress tracking instance.
     """
     api.list_objects(
         client=client,
@@ -343,6 +406,7 @@ def list_objects(
         delimiter=delimiter,
         regex=regex,
         exit_event=exit_event,
+        progress_tracker=progress_tracker,
     )
 
 
@@ -358,6 +422,7 @@ def download_objects(
     delimiter: str,
     download_config: dict,
     dry_run: bool,
+    progress_tracker: Optional[Any] = None,  # noqa: ANN401
 ) -> None:
     """Download objects from the S3 bucket using the provided configuration.
 
@@ -373,6 +438,7 @@ def download_objects(
         delimiter (str): Delimiter for S3 object keys.
         download_config (dict): Download configuration.
         dry_run (bool): If True, only list objects without downloading.
+        progress_tracker (Optional[Any]): Progress tracking instance.
     """
     api.download_objects(
         client=client,
@@ -386,6 +452,7 @@ def download_objects(
         delimiter=delimiter,
         download_config=download_config,
         dry_run=dry_run,
+        progress_tracker=progress_tracker,
     )
 
 
@@ -399,6 +466,7 @@ def run_cli(  # noqa: C901
     dry_run: bool,
     delimiter: str,
     quiet: bool,
+    progress: str,
 ) -> None:
     """Run the main S3Fetch CLI logic.
 
@@ -412,6 +480,7 @@ def run_cli(  # noqa: C901
         dry_run (bool): If True, only list objects without downloading.
         delimiter (str): Delimiter for S3 object keys.
         quiet (bool): If True, suppress output to stdout.
+        progress (str): Progress display mode (none, simple, detailed).
     """
     download_dir, bucket, prefix = prepare_download_dir_and_prefix(
         download_dir, s3_uri, delimiter
@@ -422,10 +491,22 @@ def run_cli(  # noqa: C901
     )
     exit_event = utils.create_exit_event()
 
+    # Create progress tracker if progress is enabled
+    progress_tracker = None
+    if progress != "none":
+        progress_tracker = ProgressTracker()
+
     print(f"Starting to list objects from {s3_uri}", quiet)
     try:
         list_objects(
-            client, download_queue, bucket, prefix, delimiter, regex, exit_event
+            client,
+            download_queue,
+            bucket,
+            prefix,
+            delimiter,
+            regex,
+            exit_event,
+            progress_tracker,
         )
         download_config = s3.create_download_config(callback=None)
         if not quiet:
@@ -433,6 +514,12 @@ def run_cli(  # noqa: C901
                 queue=completed_queue,
                 func=utils.print_completed_objects,
             )
+
+        # Start progress monitoring for detailed mode
+        progress_thread = None
+        if progress == "detailed" and progress_tracker and not quiet:
+            progress_thread = start_progress_monitoring(progress_tracker, exit_event)
+
         print("Starting to download objects", quiet)
         download_objects(
             client,
@@ -446,7 +533,19 @@ def run_cli(  # noqa: C901
             delimiter,
             download_config,
             dry_run,
+            progress_tracker,
         )
+
+        # Stop progress monitoring and print final summary
+        if progress_thread:
+            exit_event.set()
+            progress_thread.join(timeout=1)
+            print("", quiet)  # New line after progress updates
+
+        # Print final summary for both simple and detailed modes
+        if progress != "none" and progress_tracker and not quiet:
+            print_progress_summary(progress_tracker, quiet)
+
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.", False)  # Always show, even with --quiet
         sys.exit(1)

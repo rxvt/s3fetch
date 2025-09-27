@@ -201,6 +201,85 @@ Download objects ending in `.dmg`.
 s3fetch s3://my-test-bucket/ --regex '\.dmg$'
 ```
 
+## Library Usage
+
+S3Fetch can be used as a library in your Python projects. Here's how to use it programmatically:
+
+### Basic Library Usage
+
+```python
+import s3fetch
+
+# Download all objects from a bucket prefix
+s3fetch.download_bucket(
+    bucket="my-test-bucket",
+    prefix="data/2023/",
+    download_dir="./downloads",
+    threads=10
+)
+
+# Use regex filtering
+s3fetch.download_bucket(
+    bucket="my-test-bucket",
+    prefix="logs/",
+    download_dir="./logs",
+    regex=r"\.log$",
+    threads=5
+)
+
+# Dry run to see what would be downloaded
+objects = s3fetch.list_bucket(
+    bucket="my-test-bucket",
+    prefix="data/",
+    regex=r"\.csv$"
+)
+print(f"Found {len(objects)} CSV files")
+```
+
+### Configuring Logging
+
+When using S3Fetch as a library, you can configure its logging behavior:
+
+```python
+import logging
+import s3fetch
+
+# Option 1: Configure s3fetch's logger level
+s3fetch_logger = logging.getLogger("s3fetch")
+s3fetch_logger.setLevel(logging.WARNING)  # Reduce s3fetch output
+s3fetch_logger.addHandler(logging.StreamHandler())
+
+# Option 2: Disable s3fetch logging completely
+s3fetch_logger = logging.getLogger("s3fetch")
+s3fetch_logger.disabled = True
+
+# Then use s3fetch normally
+s3fetch.download_bucket(
+    bucket="my-bucket",
+    prefix="data/",
+    download_dir="./data"
+)
+```
+
+### Advanced Usage
+
+```python
+import s3fetch
+import boto3
+
+# Use custom boto3 session for credentials
+session = boto3.Session(profile_name="production")
+s3_client = session.client("s3", region_name="us-west-2")
+
+# Pass custom client to s3fetch
+s3fetch.download_bucket(
+    bucket="my-bucket",
+    prefix="data/",
+    download_dir="./data",
+    s3_client=s3_client
+)
+```
+
 ## Troubleshooting
 
 ### MacOS hangs when downloading using high number of threads

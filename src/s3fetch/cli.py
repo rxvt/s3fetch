@@ -149,36 +149,41 @@ def validate_download_directory(download_dir: Optional[Path]) -> None:
     "--region",
     type=str,
     default="us-east-1",
-    help="Bucket region. Defaults to 'us-east-1'.",
+    help="AWS region for the S3 bucket (e.g., us-east-1, eu-west-1). "
+    "Defaults to 'us-east-1'.",
 )
-@click.option("-d", "--debug", is_flag=True, help="Enable debug output.")
+@click.option("-d", "--debug", is_flag=True, help="Enable verbose debug output.")
 @click.option(
     "--download-dir",
     type=Path,
-    help="Download directory. Defaults to current directory.",
+    help="Local directory to save downloaded files. Creates if missing. "
+    "Defaults to current directory.",
 )
 @click.option(
-    "-r", "--regex", type=str, help="Filter list of available objects by regex."
+    "-r",
+    "--regex",
+    type=str,
+    help="Filter objects using regular expressions (e.g., '.*\\.jpg$' for JPEG files).",
 )
 @click.option(
     "-t",
     "--threads",
     type=int,
-    help="Number of threads to use. Defaults to available core count.",
+    help="Number of concurrent download threads (1-1000). Defaults to CPU core count.",
 )
 @click.option(
     "--dry-run",
     "--list-only",
     is_flag=True,
-    help="List objects only, but will create local directories.",
+    help="Show what would be downloaded without actually downloading files.",
 )
 @click.option(
     "--delimiter",
     type=str,
     default="/",
-    help="Specify the \"directory\" delimiter. Defaults to '/'.",
+    help="Object key delimiter for path structure. Defaults to '/'.",
 )
-@click.option("-q", "--quiet", is_flag=True, help="Don't print to stdout.")
+@click.option("-q", "--quiet", is_flag=True, help="Suppress all output except errors.")
 def cli(
     s3_uri: str,
     region: str,

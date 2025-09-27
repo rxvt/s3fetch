@@ -208,32 +208,43 @@ S3Fetch can be used as a library in your Python projects. Here's how to use it p
 ### Basic Library Usage
 
 ```python
-import s3fetch
+import boto3
+import threading
+from s3fetch.api import list_objects, download_objects
+from s3fetch.s3 import S3FetchQueue, create_download_config
+
+# Setup S3 client and queues
+s3_client = boto3.client("s3")
+download_queue = S3FetchQueue()
+completed_queue = S3FetchQueue()
+exit_event = threading.Event()
 
 # Download all objects from a bucket prefix
-s3fetch.download_bucket(
+list_objects(
+    bucket="my-test-bucket",
+    prefix="data/2023/",
+    client=s3_client,
+    download_queue=download_queue,
+    delimiter="/",
+    regex=None,
+    exit_event=exit_event
+)
+
+download_config = create_download_config()
+success_count, failed_downloads = download_objects(
+    client=s3_client,
+    threads=10,
+    download_queue=download_queue,
+    completed_queue=completed_queue,
+    exit_event=exit_event,
     bucket="my-test-bucket",
     prefix="data/2023/",
     download_dir="./downloads",
-    threads=10
+    delimiter="/",
+    download_config=download_config
 )
 
-# Use regex filtering
-s3fetch.download_bucket(
-    bucket="my-test-bucket",
-    prefix="logs/",
-    download_dir="./logs",
-    regex=r"\.log$",
-    threads=5
-)
-
-# Dry run to see what would be downloaded
-objects = s3fetch.list_bucket(
-    bucket="my-test-bucket",
-    prefix="data/",
-    regex=r"\.csv$"
-)
-print(f"Found {len(objects)} CSV files")
+print(f"Downloaded {success_count} objects successfully")
 ```
 
 ### Configuring Logging
@@ -253,30 +264,148 @@ s3fetch_logger.addHandler(logging.StreamHandler())
 s3fetch_logger = logging.getLogger("s3fetch")
 s3fetch_logger.disabled = True
 
-# Then use s3fetch normally
+# Then use s3fetch normally with the API functions
+# (See Basic Library Usage section for complete example)
+```
+
+### Progress Tracking
+
+S3Fetch includes built-in progress tracking capabilities that you can use to monitor download progress in your applications:
+
+```python
+import s3fetch
+from s3fetch.utils import ProgressTracker
+
+# Create a progress tracker
+tracker = ProgressTracker()
+
+# Download with progress tracking
 s3fetch.download_bucket(
     bucket="my-bucket",
     prefix="data/",
-    download_dir="./data"
+    download_dir="./downloads",
+    threads=10,
+    progress_tracker=tracker
 )
+
+# Monitor progress during download
+stats = tracker.get_stats()
+print(f"Found: {stats['objects_found']} objects")
+print(f"Downloaded: {stats['objects_downloaded']} objects")
+print(f"Total size: {stats['bytes_downloaded']} bytes")
+print(f"Speed: {stats['download_speed_mbps']:.2f} MB/s")
 ```
+
+For more granular control, you can also monitor progress in real-time:
+
+```python
+import boto3
+import threading
+import time
+from s3fetch.api import list_objects, download_objects
+from s3fetch.s3 import S3FetchQueue, create_download_config
+from s3fetch.utils import ProgressTracker
+
+def monitor_progress(tracker):
+    """Monitor and display progress updates."""
+    while True:
+        stats = tracker.get_stats()
+        print(f"\rFound: {stats['objects_found']} | "
+              f"Downloaded: {stats['objects_downloaded']} | "
+              f"Speed: {stats['download_speed_mbps']:.1f} MB/s", end="")
+        time.sleep(1)
+
+# Create progress tracker
+tracker = ProgressTracker()
+
+# Start monitoring thread
+monitor_thread = threading.Thread(target=monitor_progress, args=(tracker,))
+monitor_thread.daemon = True
+monitor_thread.start()
+
+# Setup and start download
+s3_client = boto3.client("s3")
+download_queue = S3FetchQueue()
+completed_queue = S3FetchQueue()
+exit_event = threading.Event()
+
+list_objects(
+    bucket="my-bucket",
+    prefix="large-dataset/",
+    client=s3_client,
+    download_queue=download_queue,
+    delimiter="/",
+    regex=None,
+    exit_event=exit_event,
+    progress_tracker=tracker
+)
+
+download_config = create_download_config()
+success_count, failed_downloads = download_objects(
+    client=s3_client,
+    threads=20,
+    download_queue=download_queue,
+    completed_queue=completed_queue,
+    exit_event=exit_event,
+    bucket="my-bucket",
+    prefix="large-dataset/",
+    download_dir="./downloads",
+    delimiter="/",
+    download_config=download_config,
+    progress_tracker=tracker
+)
+
+print("\nDownload complete!")
+```
+
+The ProgressTracker provides these statistics:
+- `objects_found`: Number of objects discovered during listing
+- `objects_downloaded`: Number of objects successfully downloaded
+- `bytes_downloaded`: Total bytes downloaded
+- `elapsed_time`: Time elapsed since tracking started
+- `download_speed_mbps`: Current download speed in MB/s
+
+Note: The progress tracker is thread-safe and can be safely accessed from multiple threads.
 
 ### Advanced Usage
 
 ```python
-import s3fetch
 import boto3
+import threading
+from s3fetch.api import list_objects, download_objects
+from s3fetch.s3 import S3FetchQueue, create_download_config
 
 # Use custom boto3 session for credentials
 session = boto3.Session(profile_name="production")
 s3_client = session.client("s3", region_name="us-west-2")
 
-# Pass custom client to s3fetch
-s3fetch.download_bucket(
+# Use custom client with s3fetch API functions
+download_queue = S3FetchQueue()
+completed_queue = S3FetchQueue()
+exit_event = threading.Event()
+
+list_objects(
+    bucket="my-bucket",
+    prefix="data/",
+    client=s3_client,
+    download_queue=download_queue,
+    delimiter="/",
+    regex=None,
+    exit_event=exit_event
+)
+
+download_config = create_download_config()
+success_count, failed_downloads = download_objects(
+    client=s3_client,
+    threads=10,
+    download_queue=download_queue,
+    completed_queue=completed_queue,
+    exit_event=exit_event,
     bucket="my-bucket",
     prefix="data/",
     download_dir="./data",
-    s3_client=s3_client
+    delimiter="/",
+    download_config=download_config
 )
 ```
 

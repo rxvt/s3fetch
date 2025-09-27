@@ -30,8 +30,11 @@ def validate_s3_uri(s3_uri: str) -> None:
     """
     if not s3_uri.startswith("s3://"):
         raise click.BadParameter(
-            f"S3 URI must start with 's3://'. Got: {s3_uri}\n"
-            "Example: s3://my-bucket or s3://my-bucket/my/prefix"
+            f"S3 URI must start with 's3://'.\n"
+            f"Got: {s3_uri}\n"
+            f"Examples:\n"
+            f"  s3://my-bucket/\n"
+            f"  s3://my-bucket/folder/subfolder/"
         )
 
     # Remove s3:// prefix and check for valid bucket name
@@ -39,16 +42,19 @@ def validate_s3_uri(s3_uri: str) -> None:
     if not uri_without_schema:
         raise click.BadParameter(
             "S3 URI must include a bucket name after 's3://'.\n"
-            "Example: s3://my-bucket or s3://my-bucket/my/prefix"
+            "Examples:\n"
+            "  s3://my-bucket/\n"
+            "  s3://my-bucket/my/prefix/"
         )
 
-    # The bucket name is everything before the first delimiter
-    # We'll do basic validation here, more detailed parsing happens later with the
-    # actual delimiter
-    if not uri_without_schema.strip():
+    # Check for bucket name validation
+    bucket_part = uri_without_schema.split("/")[0]
+    if not bucket_part.strip():
         raise click.BadParameter(
             "S3 URI must include a valid bucket name.\n"
-            "Example: s3://my-bucket or s3://my-bucket/my/prefix"
+            "Examples:\n"
+            "  s3://my-bucket/\n"
+            "  s3://my-bucket/my/prefix/"
         )
 
 

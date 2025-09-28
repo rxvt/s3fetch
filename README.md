@@ -120,6 +120,16 @@ For development work on s3fetch:
    hatch run s3fetch --help
    ```
 
+4. (Optional) Populate a test S3 bucket with test data for development:
+   ```bash
+   # First create your own test bucket (use a unique name!)
+   aws s3 mb s3://your-unique-s3fetch-test-bucket-name --region us-east-1
+
+   # Then populate it with test data
+   hatch run python scripts/populate_test_bucket.py --bucket your-unique-s3fetch-test-bucket-name --dry-run  # See what would be created
+   hatch run python scripts/populate_test_bucket.py --bucket your-unique-s3fetch-test-bucket-name           # Actually populate
+   ```
+
 ## Usage
 
 ```text

@@ -26,6 +26,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Cache Hatch environments
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/hatch
+          key: hatch-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            hatch-${{ runner.os }}-py${{ matrix.python-version }}-
+            hatch-${{ runner.os }}-
+
       - name: Install Hatch
         uses: pypa/hatch@257e27e51a6a5616ed08a39a408a21c35c9931bc
       - name: Configure AWS Credentials

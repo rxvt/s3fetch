@@ -17,10 +17,10 @@ jobs:
           python-version: '3.12'
       - name: Install Hatch
         uses: pypa/hatch@257e27e51a6a5616ed08a39a408a21c35c9931bc
-      # - name: Configure AWS Credentials
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     role-to-assume: arn:aws:iam::935355401814:role/s3fetch-e2e-test-bot
-      #     aws-region: us-east-2
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::408167012360:role/S3FetchGitHubActionsRole
+          aws-region: us-east-1
       - name: Run Tests
         run: hatch test -a

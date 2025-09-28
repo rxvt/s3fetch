@@ -14,11 +14,11 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - name: Install Hatch
         uses: pypa/hatch@257e27e51a6a5616ed08a39a408a21c35c9931bc
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@main
         with:
           role-to-assume: arn:aws:iam::408167012360:role/S3FetchGitHubActionsRole
           aws-region: us-east-1

@@ -1,36 +1,27 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: 'S3 bucket for s3fetch testing with lifecycle policy for multipart upload expiration'
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "S3 bucket for s3fetch testing with lifecycle policy for multipart upload expiration"
 
 Resources:
-  GitHubOIDCProvider:
-    Type: AWS::IAM::OIDCProvider
-    Properties:
-      Url: https://token.actions.githubusercontent.com
-      ClientIdList:
-        - sts.amazonaws.com
-      ThumbprintList:
-        - 6938fd4d98bab03faadb97b34396831e3780aea1
-        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
-
   S3FetchGitHubActionsRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: S3FetchGitHubActionsRole
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              Federated: !Ref GitHubOIDCProvider
+              Federated: arn:aws:iam::408167012360:oidc-provider/token.actions.githubusercontent.com
             Action: sts:AssumeRoleWithWebIdentity
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
                 token.actions.githubusercontent.com:sub: repo:rxvt/s3fetch:*
       Policies:
         - PolicyName: S3FetchTestBucketAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -39,7 +30,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:GetObject
-                Resource: !Sub '${S3FetchTestBucket.Arn}/*'
+                Resource: !Sub "${S3FetchTestBucket.Arn}/*"
 
   S3FetchTestBucket:
     Type: AWS::S3::Bucket
@@ -59,19 +50,19 @@ Resources:
 
 Outputs:
   BucketName:
-    Description: 'Name of the S3 bucket'
+    Description: "Name of the S3 bucket"
     Value: !Ref S3FetchTestBucket
     Export:
-      Name: !Sub '${AWS::StackName}-BucketName'
+      Name: !Sub "${AWS::StackName}-BucketName"
 
   BucketArn:
-    Description: 'ARN of the S3 bucket'
+    Description: "ARN of the S3 bucket"
     Value: !GetAtt S3FetchTestBucket.Arn
     Export:
-      Name: !Sub '${AWS::StackName}-BucketArn'
+      Name: !Sub "${AWS::StackName}-BucketArn"
 
   GitHubActionsRoleArn:
-    Description: 'ARN of the GitHub Actions IAM role'
+    Description: "ARN of the GitHub Actions IAM role"
     Value: !GetAtt S3FetchGitHubActionsRole.Arn
     Export:
-      Name: !Sub '${AWS::StackName}-GitHubActionsRoleArn'
+      Name: !Sub "${AWS::StackName}-GitHubActionsRoleArn"

@@ -42,6 +42,15 @@ s3fetch is a multi-threaded S3 download tool with these core components:
 - Custom output formatting and progress indication
 - Standard boto3 AWS credentials support
 
+## CICD
+
+- CICD runs via GitHub Actions
+- There is a test AWS S3 bucket called `s3://s3fetch-cicd-test-bucket` in the `us-east-1` region
+- The AWS CloudFormation template is in the `infra` directory
+- The AWS CloudFormation stack is called `s3fetch-cicd-test-bucket` and is provisioned in `us-east-1`
+- Always specify `--capabilities CAPABILITY_NAMED_IAM)` when updating the CloudFormation template
+- It should contain a mixture of small and big objects with various naming schemes for testing purposes
+
 ## Important Notes
 
 - Minimum Python version: 3.10 (specified in pyproject.toml)

@@ -14,7 +14,10 @@ def test_create_exit_event():
 
 
 class TestProgressTracker:
+    """Test cases for the ProgressTracker class."""
+
     def test_initial_state(self):
+        """Test that tracker starts with expected initial values."""
         tracker = utils.ProgressTracker()
         stats = tracker.get_stats()
 
@@ -25,6 +28,7 @@ class TestProgressTracker:
         assert stats["download_speed_mbps"] == 0.0
 
     def test_increment_found(self):
+        """Test that increment_found correctly updates the found counter."""
         tracker = utils.ProgressTracker()
 
         tracker.increment_found()
@@ -34,6 +38,7 @@ class TestProgressTracker:
         assert tracker.objects_found == 2
 
     def test_increment_downloaded(self):
+        """Test that increment_downloaded updates counters correctly."""
         tracker = utils.ProgressTracker()
 
         tracker.increment_downloaded(1024)
@@ -47,6 +52,7 @@ class TestProgressTracker:
         assert stats["bytes_downloaded"] == 3072
 
     def test_download_speed_calculation(self):
+        """Test that download speed is calculated correctly."""
         tracker = utils.ProgressTracker()
 
         # Set start time to a known value for predictable speed calculation
@@ -58,10 +64,13 @@ class TestProgressTracker:
         assert 0.5 <= stats["download_speed_mbps"] <= 1.5
 
     def test_thread_safety_objects_found(self):
-        """Test that objects_found increments are thread-safe (single-threaded operation)."""
+        """Test that objects_found increments are thread-safe.
+
+        This tests single-threaded operation behavior.
+        """
         tracker = utils.ProgressTracker()
 
-        def increment_found_many():
+        def increment_found_many() -> None:
             for _ in range(100):
                 tracker.increment_found()
 
@@ -78,7 +87,7 @@ class TestProgressTracker:
         """Test that download counters are thread-safe with concurrent access."""
         tracker = utils.ProgressTracker()
 
-        def increment_downloads():
+        def increment_downloads() -> None:
             for i in range(100):
                 tracker.increment_downloaded(100 + i)  # Varying sizes
 
@@ -99,11 +108,11 @@ class TestProgressTracker:
         """Test mixed concurrent operations on all counters."""
         tracker = utils.ProgressTracker()
 
-        def worker_found():
+        def worker_found() -> None:
             for _ in range(50):
                 tracker.increment_found()
 
-        def worker_downloaded():
+        def worker_downloaded() -> None:
             for _ in range(30):
                 tracker.increment_downloaded(1000)
 
@@ -128,12 +137,12 @@ class TestProgressTracker:
         """Test that get_stats() works correctly during concurrent operations."""
         tracker = utils.ProgressTracker()
 
-        def continuous_downloads():
-            for i in range(100):
+        def continuous_downloads() -> None:
+            for _i in range(100):
                 tracker.increment_downloaded(1000)
                 time.sleep(0.001)  # Small delay
 
-        def check_stats():
+        def check_stats() -> list[dict[str, float]]:
             stats_list = []
             for _ in range(20):
                 stats_list.append(tracker.get_stats())

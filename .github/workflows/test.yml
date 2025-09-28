@@ -43,5 +43,5 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::408167012360:role/S3FetchGitHubActionsRole
           aws-region: us-east-1
-      - name: Run Tests
-        run: hatch test -a
+      - name: Run tests
+        run: hatch test

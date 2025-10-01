@@ -3,9 +3,15 @@ repos:
     rev: v5.0.0
     hooks:
       - id: check-yaml
+        exclude: ^infra/.*\.yaml$
       - id: end-of-file-fixer
       - id: trailing-whitespace
       - id: check-added-large-files
+  - repo: https://github.com/aws-cloudformation/cfn-lint
+    rev: v1.40.0
+    hooks:
+      - id: cfn-lint
+        files: ^infra/.*\.yaml$
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.9.4 # Ruff version.
     hooks:

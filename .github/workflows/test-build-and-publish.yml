@@ -1,4 +1,4 @@
-name: Test Build and Publish
+name: Prerelease Build and Publish
 on:
   release:
     types: [prereleased]

@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "rxvt"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    ignore:
+      # Exclude AWS packages that release daily to avoid PR spam
+      - dependency-name: "boto3"
+      - dependency-name: "botocore"
+      - dependency-name: "boto*"

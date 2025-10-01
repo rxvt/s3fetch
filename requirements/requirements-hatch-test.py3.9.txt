@@ -33,7 +33,7 @@ certifi==2025.1.31
     # via requests
 cffi==1.17.1
     # via cryptography
-charset-normalizer==3.4.1
+charset-normalizer==3.4.3
     # via requests
 click==8.1.8
     # via hatch.envs.hatch-test.py3.9

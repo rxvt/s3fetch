@@ -106,7 +106,7 @@ requests==2.32.3
     # via
     #   moto
     #   responses
-responses==0.25.6
+responses==0.25.8
     # via moto
 s3transfer==0.14.0
     # via boto3

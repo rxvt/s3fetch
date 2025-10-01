@@ -20,7 +20,7 @@ dependencies = ["boto3==1.40.38", "boto3-stubs[s3]==1.40.38", "click==8.3.0"]
 requires = ["hatch-pip-compile"]
 
 [project.optional-dependencies]
-test = ["pytest~=8.2.0", "pytest-mock~=3.12.0", "moto[s3]~=5.0.28"]
+test = ["pytest~=8.2.0", "pytest-mock~=3.12.0", "moto[s3]>=5.0.28,<5.2.0"]
 dev = ["pre-commit~=4.1.0", "mypy", "ruff~=0.13.1"]
 
 [tool.hatch.envs.default]

@@ -65,7 +65,7 @@ moto==5.0.28
     # via hatch.envs.hatch-test.py3.13
 mypy-boto3-s3==1.40.26
     # via boto3-stubs
-packaging==24.2
+packaging==25.0
     # via
     #   pytest
     #   pytest-rerunfailures

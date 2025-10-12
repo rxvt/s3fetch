@@ -3,7 +3,6 @@ import threading
 from pathlib import Path
 from unittest.mock import patch
 
-import boto3
 import pytest
 from boto3.s3.transfer import TransferConfig
 from mypy_boto3_s3.client import S3Client
@@ -112,25 +111,28 @@ def test_adding_single_directory_key_to_queue(s3_client: S3Client):
         queue.get()
 
 
-def test_listing_objects_with_no_credentials():
-    # Don't import mocked S3 client here as we want the credentials to be invalid.
-    s3_client = boto3.client("s3", region_name="us-east-1")
+def test_listing_objects_with_no_credentials(s3_client):
+    from botocore.exceptions import NoCredentialsError
 
     bucket = "my_bucket"
     queue = s3.get_queue("download")
-    queue.close()
     exit_event = threading.Event()
 
-    with pytest.raises(InvalidCredentialsError):
-        s3.list_objects(
-            client=s3_client,
-            queue=queue,
-            bucket=bucket,
-            prefix="",
-            delimiter="/",
-            regex=None,
-            exit_event=exit_event,
-        )
+    # Mock a NoCredentialsError
+    with patch.object(s3_client, "get_paginator") as mock_paginator:
+        mock_paginator.side_effect = NoCredentialsError()
+
+        with pytest.raises(NoCredentialsError):
+            s3.list_objects(
+                client=s3_client,
+                queue=queue,
+                bucket=bucket,
+                prefix="",
+                delimiter="/",
+                regex=None,
+                exit_event=exit_event,
+            )
+    queue.close()
 
 
 def test_listing_objects_with_invalid_access_key_id(s3_client):

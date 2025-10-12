@@ -118,7 +118,7 @@ types-awscrt==0.23.9
     # via botocore-stubs
 types-s3transfer==0.11.2
     # via boto3-stubs
-typing-extensions==4.12.2
+typing-extensions==4.15.0
     # via
     #   boto3-stubs
     #   exceptiongroup

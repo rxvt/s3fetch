@@ -57,8 +57,11 @@ s3fetch is a multi-threaded S3 download tool with these core components:
 - Uses hatch-pip-compile for dependency management with locked requirements
 - Pre-commit hooks are automatically installed in dev environment
 - Tests include unit, integration, and e2e categories
+- Make sure to always run a test after updating it
 - Ruff configuration includes strict linting rules (Google docstring convention)
-- Always prompt for confirmation before making changes (per Copilot instructions)
+- Always prompt for confirmation before making changes
 - Always run tests after making changes using `hatch test -a`
 - Max line length is 88
 - When searching over files respect the `.gitignore` file
+- Create plans in the `./plan` directory, create it if required
+- Make sure to run the formatter and linter via `just` before committing

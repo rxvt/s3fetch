@@ -154,3 +154,38 @@ def test_regex_filtering(test_bucket, tmp_path):
     assert not (tmp_path / "extensions").exists(), (
         "Files should be at root of download dir, not in 'extensions/' subdirectory"
     )
+
+
+def test_dry_run_mode(test_bucket, tmp_path):
+    """Test dry-run mode lists objects without downloading them.
+
+    Uses --dry-run flag on the small/ prefix to verify that objects are listed
+    but not actually downloaded. This is an important safety feature.
+    """
+    runner = CliRunner()
+
+    # Run with --dry-run flag on small/ prefix
+    result = runner.invoke(
+        cli,
+        [
+            f"s3://{test_bucket['bucket']}/small/",
+            "--download-dir",
+            str(tmp_path),
+            "--region",
+            test_bucket["region"],
+            "--dry-run",
+        ],
+    )
+
+    # Verify the command succeeded
+    assert result.exit_code == 0, f"Command failed with output: {result.output}"
+
+    # Verify that objects were found and listed (in dry-run, objects are printed)
+    assert "small/file_000.txt" in result.output
+    assert "small/file_119.txt" in result.output
+
+    # Verify no files were actually downloaded
+    downloaded_files = list(tmp_path.glob("*"))
+    assert len(downloaded_files) == 0, (
+        f"Expected no files in dry-run mode, but found {len(downloaded_files)}"
+    )

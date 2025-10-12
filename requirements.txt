@@ -7,7 +7,7 @@
 # - mypy
 # - pre-commit~=4.1.0
 # - ruff~=0.13.1
-# - moto[s3]~=5.0.28
+# - moto[s3]<5.2.0,>=5.0.28
 # - pytest-mock~=3.12.0
 # - pytest~=8.2.0
 #

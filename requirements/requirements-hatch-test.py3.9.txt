@@ -45,7 +45,7 @@ coverage-enable-subprocess==1.0
     # via hatch.envs.hatch-test.py3.9
 cryptography==44.0.0
     # via moto
-exceptiongroup==1.2.2
+exceptiongroup==1.3.0
     # via pytest
 execnet==2.1.1
     # via pytest-xdist

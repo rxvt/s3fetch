@@ -101,3 +101,56 @@ def test_download_multiple_files(test_bucket, tmp_path):
     assert not (tmp_path / "small").exists(), (
         "Files should be at root of download dir, not in 'small/' subdirectory"
     )
+
+
+def test_regex_filtering(test_bucket, tmp_path):
+    """Test regex filtering to download only specific file types.
+
+    Downloads from the extensions/ prefix using regex to filter only .json files.
+    This tests s3fetch's key differentiator - regex filtering of S3 objects.
+    """
+    runner = CliRunner()
+
+    # Download only .json files from extensions/ prefix using regex
+    result = runner.invoke(
+        cli,
+        [
+            f"s3://{test_bucket['bucket']}/extensions/",
+            "--download-dir",
+            str(tmp_path),
+            "--region",
+            test_bucket["region"],
+            "--regex",
+            r".*\.json$",
+            "--progress",
+            "simple",
+        ],
+    )
+
+    # Verify the command succeeded
+    assert result.exit_code == 0, f"Command failed with output: {result.output}"
+
+    # Verify progress output was shown
+    assert "Objects found:" in result.output
+    assert "Objects downloaded:" in result.output
+
+    # Get all downloaded files
+    downloaded_files = list(tmp_path.glob("*"))
+
+    # Expected: 8 .json files (based on populate_test_bucket.py distribution)
+    expected_count = 8
+
+    # Verify we got exactly the expected number of .json files
+    assert len(downloaded_files) == expected_count, (
+        f"Expected {expected_count} .json files but found {len(downloaded_files)}"
+    )
+
+    # Verify all downloaded files have .json extension
+    for file_path in downloaded_files:
+        assert file_path.suffix == ".json", f"Found non-.json file: {file_path.name}"
+        assert file_path.stat().st_size > 0, f"File {file_path.name} is empty"
+
+    # Verify files are at root of download dir, not nested
+    assert not (tmp_path / "extensions").exists(), (
+        "Files should be at root of download dir, not in 'extensions/' subdirectory"
+    )

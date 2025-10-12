@@ -30,6 +30,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:GetObject
+                  - s3:ListBucket
                 Resource: !Sub "${S3FetchTestBucket.Arn}/*"
 
   S3FetchTestBucket:

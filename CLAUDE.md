@@ -63,5 +63,5 @@ s3fetch is a multi-threaded S3 download tool with these core components:
 - Always run tests after making changes using `hatch test -a`
 - Max line length is 88
 - When searching over files respect the `.gitignore` file
-- Create plans in the `./plan` directory, create it if required
+- Create plans in the `./plan` directory, create it if required, these should never be committed to git
 - Make sure to run the formatter and linter via `just` before committing

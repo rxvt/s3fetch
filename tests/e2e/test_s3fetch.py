@@ -280,3 +280,60 @@ def test_download_with_custom_directory(test_bucket, tmp_path):
         file_path = custom_dir / f"file_{i:03d}.txt"
         assert file_path.exists(), f"File {file_path.name} doesn't exist"
         assert file_path.stat().st_size > 0, f"File {file_path.name} is empty"
+
+
+def test_multi_threaded_download_e2e(test_bucket, tmp_path):
+    """Test multi-threaded download with concurrent workers.
+
+    Downloads from the medium/ prefix (80 files, 1-10MB each) using multiple
+    threads to verify the core multi-threading architecture works correctly.
+    This tests S3FetchQueue, producer-consumer pattern, and concurrent I/O.
+    """
+    runner = CliRunner()
+
+    result = runner.invoke(
+        cli,
+        [
+            f"s3://{test_bucket['bucket']}/medium/",
+            "--download-dir",
+            str(tmp_path),
+            "--region",
+            test_bucket["region"],
+            "--threads",
+            "10",
+            "--progress",
+            "simple",
+        ],
+    )
+
+    assert result.exit_code == 0, f"Command failed with output: {result.output}"
+
+    assert "Objects found:" in result.output
+    assert "Objects downloaded:" in result.output
+    assert "Total data:" in result.output
+    assert "Average speed:" in result.output
+    assert "Total time:" in result.output
+
+    downloaded_files = list(tmp_path.glob("data_*.jpg"))
+    assert len(downloaded_files) == 80, (
+        f"Expected 80 files but found {len(downloaded_files)}"
+    )
+
+    expected_files = {f"data_{i:03d}.jpg" for i in range(80)}
+    actual_files = {f.name for f in downloaded_files}
+    assert expected_files == actual_files, (
+        f"File name mismatch. Missing: {expected_files - actual_files}, "
+        f"Extra: {actual_files - expected_files}"
+    )
+
+    for i in [0, 39, 79]:
+        file_path = tmp_path / f"data_{i:03d}.jpg"
+        assert file_path.exists(), f"File {file_path.name} doesn't exist"
+        assert file_path.stat().st_size > 0, f"File {file_path.name} is empty"
+        assert file_path.stat().st_size >= 1024 * 1024, (
+            f"File {file_path.name} is smaller than expected (< 1MB)"
+        )
+
+    assert not (tmp_path / "medium").exists(), (
+        "Files should be at root of download dir, not in 'medium/' subdirectory"
+    )

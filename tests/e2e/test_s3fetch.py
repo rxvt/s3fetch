@@ -231,3 +231,52 @@ def test_progress_tracking_simple(test_bucket, tmp_path):
     assert not (tmp_path / "sequences").exists(), (
         "Files should be at root of download dir, not in 'sequences/' subdirectory"
     )
+
+
+def test_download_with_custom_directory(test_bucket, tmp_path):
+    """Test downloading files to a custom directory.
+
+    Uses --download-dir to specify a custom target directory and verifies
+    that files are downloaded to the correct location.
+    """
+    runner = CliRunner()
+
+    custom_dir = tmp_path / "my_custom_downloads"
+    custom_dir.mkdir()
+
+    result = runner.invoke(
+        cli,
+        [
+            f"s3://{test_bucket['bucket']}/small/",
+            "--download-dir",
+            str(custom_dir),
+            "--region",
+            test_bucket["region"],
+            "--progress",
+            "simple",
+        ],
+    )
+
+    assert result.exit_code == 0, f"Command failed with output: {result.output}"
+
+    assert "Objects found:" in result.output
+    assert "Objects downloaded:" in result.output
+
+    assert custom_dir.exists(), f"Custom directory {custom_dir} was not created"
+    assert custom_dir.is_dir(), f"{custom_dir} is not a directory"
+
+    downloaded_files = list(custom_dir.glob("file_*.txt"))
+    assert len(downloaded_files) == 120, (
+        f"Expected 120 files in custom directory but found {len(downloaded_files)}"
+    )
+
+    parent_files = list(tmp_path.glob("file_*.txt"))
+    assert len(parent_files) == 0, (
+        f"Found {len(parent_files)} files in parent directory; "
+        "files should only be in custom directory"
+    )
+
+    for i in [0, 50, 119]:
+        file_path = custom_dir / f"file_{i:03d}.txt"
+        assert file_path.exists(), f"File {file_path.name} doesn't exist"
+        assert file_path.stat().st_size > 0, f"File {file_path.name} is empty"

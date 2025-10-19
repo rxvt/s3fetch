@@ -189,3 +189,45 @@ def test_dry_run_mode(test_bucket, tmp_path):
     assert len(downloaded_files) == 0, (
         f"Expected no files in dry-run mode, but found {len(downloaded_files)}"
     )
+
+
+def test_progress_tracking_simple(test_bucket, tmp_path):
+    """Test simple progress tracking mode.
+
+    Downloads from the sequences/ prefix with --progress simple to verify
+    that progress summary is displayed after the download completes.
+    """
+    runner = CliRunner()
+
+    result = runner.invoke(
+        cli,
+        [
+            f"s3://{test_bucket['bucket']}/sequences/",
+            "--download-dir",
+            str(tmp_path),
+            "--region",
+            test_bucket["region"],
+            "--progress",
+            "simple",
+        ],
+    )
+
+    assert result.exit_code == 0, f"Command failed with output: {result.output}"
+
+    assert "Objects found:" in result.output
+    assert "Objects downloaded:" in result.output
+    assert "Total data:" in result.output
+    assert "Average speed:" in result.output
+    assert "Total time:" in result.output
+
+    downloaded_files = list(tmp_path.glob("image_*.jpg"))
+    assert len(downloaded_files) == 100, (
+        f"Expected 100 files but found {len(downloaded_files)}"
+    )
+
+    for file_path in downloaded_files[:5]:
+        assert file_path.stat().st_size > 0, f"File {file_path.name} is empty"
+
+    assert not (tmp_path / "sequences").exists(), (
+        "Files should be at root of download dir, not in 'sequences/' subdirectory"
+    )

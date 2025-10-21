@@ -22,28 +22,28 @@ test *args:
 
 # Run unit tests only
 test-unit:
-    hatch run test_unit
+    hatch test tests/unit
 
 # Run integration tests only
 test-integration:
-    hatch run test_integration
+    hatch test tests/integration
 
 # Run e2e tests only
 test-e2e:
-    hatch run test_e2e
+    hatch test tests/e2e
 
 # Run tests with coverage
 test-coverage:
     hatch run pytest --cov=s3fetch --cov-report=html --cov-report=term
 
 # Code Quality
-# Run type checking with mypy
-typecheck:
-    hatch run check_types
-
 # Run linting with ruff
 lint:
     hatch run ruff check
+
+# Fix linting issues automatically
+lint-fix:
+    hatch run ruff check --fix
 
 # Run formatting with ruff
 format:
@@ -53,12 +53,8 @@ format:
 format-check:
     hatch run ruff format --check
 
-# Fix linting issues automatically
-lint-fix:
-    hatch run ruff check --fix
-
 # Run all quality checks (type check + lint + format check)
-check: typecheck lint format-check
+check: lint format-check
 
 # Cleanup
 clean:

@@ -124,7 +124,7 @@ typing-extensions==4.12.2
     #   exceptiongroup
     #   mypy
     #   mypy-boto3-s3
-urllib3==1.26.20
+urllib3==2.5.0
     # via
     #   botocore
     #   requests

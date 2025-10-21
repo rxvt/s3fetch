@@ -83,7 +83,7 @@ py-partiql-parser==0.6.1
     # via moto
 pycparser==2.23
     # via cffi
-pytest==8.2.2
+pytest==8.4.2
     # via
     #   hatch.envs.default
     #   pytest-mock

@@ -2,17 +2,17 @@
 
 ## Development Commands
 
+This project uses Hatch for dependency management and task running:
+
 - **Setup environment**: `hatch env create` (creates default environment with dev/test dependencies)
-- **Run CLI**: `hatch run s3fetch <args>` or install with `pipx install -e .`
-- **Run all tests**: `hatch test -a` (runs all tests for all Python versions)
-- **Run single test**: `hatch run pytest tests/unit/test_cli.py::test_function_name`
-- **Run unit tests**: `hatch run test_unit`
-- **Run integration tests**: `hatch run test_integration`
-- **Run e2e tests**: `hatch run test_e2e`
-- **Specialized tests**: `hatch run test_regex`, `hatch run test_dryrun` (against live S3 bucket)
-- **Type checking**: `hatch run check_types` (runs mypy on src/s3fetch and tests)
-- **Linting**: `ruff check`
-- **Formatting**: `ruff format`
+- **Run CLI**: `hatch run s3fetch <args>`
+- **Run all tests**: `just test -a` (runs all tests for all Python versions)
+- **Run single test**: `just test <filename>::<test_function_name>`
+- **Run unit tests**: `just test-unit`
+- **Run integration tests**: `just test-integration`
+- **Run e2e tests**: `just test-e2e`
+- **Linting**: `just lint`
+- **Formatting**: `just format`
 - **All quality checks**: `just check`
 
 ## Project Architecture
@@ -47,6 +47,23 @@ s3fetch is a multi-threaded S3 download tool with these core components:
 - **Logging**: logging module with module-level loggers
 - **Security**: Never log credentials, use boto3 credential chain
 
+### Key Features
+
+- Concurrent downloads with configurable thread count
+- Regex filtering of objects without full bucket listing
+- Dry-run mode for testing
+- Custom output formatting and progress indication
+- Standard boto3 AWS credentials support
+
+## CICD
+
+- CICD runs via GitHub Actions
+- There is a test AWS S3 bucket called `s3://s3fetch-cicd-test-bucket` in the `us-east-1` region
+- The AWS CloudFormation template is in the `infra` directory
+- The AWS CloudFormation stack is called `s3fetch-cicd-test-bucket` and is provisioned in `us-east-1`
+- Always specify `--capabilities CAPABILITY_NAMED_IAM)` when updating the CloudFormation template
+- It should contain a mixture of small and big objects with various naming schemes for testing purposes
+
 ## Important Notes
 
 - Uses hatch-pip-compile for dependency management with locked requirements
@@ -56,6 +73,6 @@ s3fetch is a multi-threaded S3 download tool with these core components:
 - Always prompt for confirmation before making changes, even in agent mode
 - If altering a test ALWAYS run the test after making the change
 - When searching over files respect the `.gitignore` file
-- Create plans in the `./plan` directory (never commit to git)
+- Create plans in the `./plans` directory (never commit to git)
 - Make sure to run the formatter and linter via `just` before committing
 - Always run `just lint` after making changes and fix any errors

@@ -39,7 +39,7 @@ jobs:
       - name: Install Hatch
         uses: pypa/hatch@257e27e51a6a5616ed08a39a408a21c35c9931bc
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@main
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::408167012360:role/S3FetchGitHubActionsRole
           aws-region: us-east-1

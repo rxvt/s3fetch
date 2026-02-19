@@ -110,17 +110,22 @@ For development work on s3fetch:
    cd s3fetch
    ```
 
-2. Set up the development environment using hatch:
+2. Install [hatch](https://hatch.pypa.io/) using [uv](https://docs.astral.sh/uv/):
+   ```bash
+   uv tool install hatch --with hatch-pip-compile
+   ```
+
+3. Set up the development environment using hatch:
    ```bash
    hatch env create
    ```
 
-3. Run s3fetch from source:
+4. Run s3fetch from source:
    ```bash
    hatch run s3fetch --help
    ```
 
-4. (Optional) Populate a test S3 bucket with test data for development:
+5. (Optional) Populate a test S3 bucket with test data for development:
    ```bash
    # First create your own test bucket (use a unique name!)
    aws s3 mb s3://your-unique-s3fetch-test-bucket-name --region us-east-1

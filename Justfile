@@ -32,9 +32,9 @@ test-integration:
 test-e2e:
     hatch test tests/e2e
 
-# Run tests with coverage
+# Run tests with coverage (excludes e2e tests which require AWS credentials)
 test-coverage:
-    hatch run pytest --cov=s3fetch --cov-report=html --cov-report=term
+    hatch test --cover -- tests/unit tests/integration
 
 # Code Quality
 # Run linting with ruff

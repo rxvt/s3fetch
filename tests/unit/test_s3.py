@@ -810,3 +810,29 @@ def test_download_object_overwrites_existing_file(tmp_path: Path, s3_client: S3C
         "Existing file should have been overwritten with new S3 content"
     )
     completion_queue.close()
+
+
+def test_download_object_oserror_raises_clear_message(tmp_path: Path, s3_client):
+    """OSError during download (e.g. disk full) should produce a clear error message."""
+    import errno
+
+    key = "test_key"
+    dest_filename = tmp_path / "test_file"
+    bucket = "test_bucket"
+    completed_queue = s3.get_queue("completion")
+
+    disk_full_error = OSError(errno.ENOSPC, "No space left on device")
+
+    with patch.object(s3_client, "download_file") as mock_download:
+        mock_download.side_effect = disk_full_error
+        with pytest.raises(OSError, match="I/O error writing"):
+            s3.download_object(
+                key=key,
+                dest_filename=dest_filename,
+                client=s3_client,
+                bucket=bucket,
+                download_config={},
+                completed_queue=completed_queue,
+                dry_run=False,
+            )
+    completed_queue.close()

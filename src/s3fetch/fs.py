@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from .exceptions import DirectoryDoesNotExistError
+from .exceptions import DirectoryDoesNotExistError, PathTraversalError
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,15 @@ def create_destination_directory(
             delimiter,
             absolute_directory,
         )
+        # Guard against path traversal: reject keys with '..' that escape
+        # the download directory.
+        resolved = absolute_directory.resolve()
+        resolved_base = download_dir.resolve()
+        if not str(resolved).startswith(str(resolved_base)):
+            raise PathTraversalError(
+                f"Object key '{object_dir}' resolves outside the download "
+                f"directory '{download_dir}'. Refusing to create '{resolved}'."
+            )
     else:
         absolute_directory = download_dir
         logger.debug(

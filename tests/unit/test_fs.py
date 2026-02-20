@@ -1,7 +1,7 @@
 import pytest
 
 from s3fetch import fs
-from s3fetch.exceptions import DirectoryDoesNotExistError
+from s3fetch.exceptions import DirectoryDoesNotExistError, PathTraversalError
 
 
 @pytest.mark.parametrize(
@@ -32,3 +32,40 @@ def test_raise_exception_if_directory_doesnt_exist(tmp_path):
 
 def test_dont_raise_exception_if_directory_exists(tmp_path):
     fs.check_download_dir_exists(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "object_dir",
+    [
+        "../../etc/shadow",
+        "../sibling_dir/file.txt",
+        "valid/path/../../../../../../etc/passwd",
+    ],
+)
+def test_path_traversal_raises_exception(tmp_path, object_dir):
+    """Object keys with '..' that escape the download dir must be rejected."""
+    with pytest.raises(PathTraversalError):
+        fs.create_destination_directory(
+            download_dir=tmp_path,
+            object_dir=object_dir,
+            delimiter="/",
+        )
+
+
+@pytest.mark.parametrize(
+    "object_dir",
+    [
+        "normal/path/to/file",
+        "single",
+        "a/b/c/d/e",
+    ],
+)
+def test_safe_paths_do_not_raise(tmp_path, object_dir):
+    """Normal object keys without traversal components must work correctly."""
+    result = fs.create_destination_directory(
+        download_dir=tmp_path,
+        object_dir=object_dir,
+        delimiter="/",
+    )
+    assert result.is_dir()
+    assert str(result).startswith(str(tmp_path))

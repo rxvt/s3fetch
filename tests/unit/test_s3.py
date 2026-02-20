@@ -656,3 +656,63 @@ def test_split_uri_into_bucket_and_prefix(
     )
     assert bucket == expected_bucket
     assert prefix == expected_prefix
+
+
+def test_download_object_no_temp_file_on_success(tmp_path: Path, s3_client: S3Client):
+    """No temporary file should remain after a successful download."""
+    bucket = "my_bucket"
+    key = "my_test_file"
+    test_content = b"test data"
+    completion_queue = s3.get_queue("completion")
+    s3_client.create_bucket(Bucket=bucket)
+    s3_client.put_object(Bucket=bucket, Key=key, Body=test_content)
+    dest_filename = tmp_path / key
+
+    s3.download_object(
+        key=key,
+        dest_filename=dest_filename,
+        client=s3_client,
+        bucket=bucket,
+        download_config={},
+        completed_queue=completion_queue,
+        dry_run=False,
+    )
+
+    assert dest_filename.exists()
+    assert dest_filename.read_bytes() == test_content
+    tmp_files = list(tmp_path.glob("*.s3fetch_tmp"))
+    assert tmp_files == [], f"Unexpected temp files left behind: {tmp_files}"
+    completion_queue.close()
+
+
+def test_download_object_no_temp_file_on_failure(tmp_path: Path, s3_client: S3Client):
+    """No temporary file should remain after a failed download."""
+    from botocore.exceptions import ClientError as BotocoreClientError
+
+    key = "test_key"
+    dest_filename = tmp_path / "test_file"
+    bucket = "test_bucket"
+    completed_queue = s3.get_queue("completion")
+
+    error_response = {
+        "Error": {"Code": "SomeOtherError", "Message": "Something failed"}
+    }
+    client_error = BotocoreClientError(error_response, "GetObject")
+
+    with patch.object(s3_client, "download_file") as mock_download:
+        mock_download.side_effect = client_error
+        with pytest.raises(BotocoreClientError):
+            s3.download_object(
+                key=key,
+                dest_filename=dest_filename,
+                client=s3_client,
+                bucket=bucket,
+                download_config={},
+                completed_queue=completed_queue,
+                dry_run=False,
+            )
+
+    assert not dest_filename.exists()
+    tmp_files = list(tmp_path.glob("*.s3fetch_tmp"))
+    assert tmp_files == [], f"Unexpected temp files left behind: {tmp_files}"
+    completed_queue.close()

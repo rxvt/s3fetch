@@ -9,7 +9,7 @@
       - [With 8 threads](#with-8-threads)
   - [Installation](#installation)
     - [Requirements](#requirements)
-    - [pipx (recommended)](#pipx-recommended)
+    - [uv (recommended)](#uv-recommended)
     - [pip](#pip)
   - [Usage](#usage)
   - [Examples](#examples)
@@ -90,11 +90,11 @@ Timed out while listing objects after 60min.
 
 S3Fetch is available on PyPi and can be installed via one of the following methods.
 
-### pipx (recommended)
+### uv (recommended)
 
-Ensure you have [pipx](https://pypi.org/project/pipx/) installed, then:
+Ensure you have [uv](https://docs.astral.sh/uv/) installed, then:
 
-`pipx install s3fetch`
+`uv tool install s3fetch`
 
 ### pip
 

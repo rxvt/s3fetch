@@ -76,3 +76,4 @@ s3fetch is a multi-threaded S3 download tool with these core components:
 - Create plans in the `./plans` directory (never commit to git)
 - Make sure to run the formatter and linter via `just` before committing
 - Always run `just lint` after making changes and fix any errors
+- When running `git rebase --continue` in this environment, always prefix with `GIT_EDITOR=true` to avoid an interactive editor hang: `GIT_EDITOR=true git rebase --continue`

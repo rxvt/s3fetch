@@ -6,16 +6,16 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 import click
 from botocore.exceptions import ClientError
 from mypy_boto3_s3.client import S3Client
 
 from . import api, aws, s3, utils
-from .api import S3FetchQueue
 from .exceptions import S3FetchError
-from .utils import ProgressTracker
+from .s3 import DownloadResult, S3FetchQueue
+from .utils import ProgressProtocol, ProgressTracker
 from .utils import custom_print as print
 
 logger = logging.getLogger(__name__)
@@ -285,7 +285,7 @@ def get_thread_and_pool_size(threads: int) -> tuple[int, int]:
 
 def create_client_and_queues(
     region: str, conn_pool_size: int
-) -> tuple[S3Client, S3FetchQueue, S3FetchQueue]:
+) -> tuple[S3Client, "S3FetchQueue[str]", "S3FetchQueue[DownloadResult]"]:
     """Create the S3 client and download/completed queues using the factory function.
 
     Args:
@@ -293,11 +293,11 @@ def create_client_and_queues(
         conn_pool_size (int): Connection pool size for the S3 client.
 
     Returns:
-        tuple[S3Client, S3FetchQueue, S3FetchQueue]:
+        tuple[S3Client, S3FetchQueue[str], S3FetchQueue[DownloadResult]]:
             The S3 client, download queue, and completed queue.
     """
-    download_queue = s3.get_queue("download")
-    completed_queue = s3.get_queue("completion")
+    download_queue: S3FetchQueue[str] = S3FetchQueue()
+    completed_queue: S3FetchQueue[DownloadResult] = S3FetchQueue()
     client = aws.get_client(region, conn_pool_size)
     return client, download_queue, completed_queue
 
@@ -355,25 +355,25 @@ def print_progress_summary(progress_tracker: ProgressTracker, quiet: bool) -> No
 
 def list_objects(
     client: S3Client,
-    download_queue: S3FetchQueue,
+    download_queue: "S3FetchQueue[str]",
     bucket: str,
     prefix: str,
     delimiter: str,
     regex: str,
     exit_event: threading.Event,
-    progress_tracker: Optional[Any] = None,  # noqa: ANN401
+    progress_tracker: Optional[ProgressProtocol] = None,
 ) -> None:
     """List objects in the S3 bucket and add them to the download queue.
 
     Args:
         client (S3Client): The S3 client.
-        download_queue (S3FetchQueue): Queue for objects to download.
+        download_queue (S3FetchQueue[str]): Queue for objects to download.
         bucket (str): S3 bucket name.
         prefix (str): S3 prefix to filter objects.
         delimiter (str): Delimiter for S3 object keys.
         regex (str): Regex pattern to filter objects.
         exit_event (threading.Event): Event to signal exit.
-        progress_tracker (Optional[Any]): Progress tracking instance.
+        progress_tracker (Optional[ProgressProtocol]): Progress tracking instance.
     """
     api.list_objects(
         client=client,
@@ -390,8 +390,8 @@ def list_objects(
 def download_objects(
     client: S3Client,
     threads: int,
-    download_queue: S3FetchQueue,
-    completed_queue: S3FetchQueue,
+    download_queue: "S3FetchQueue[str]",
+    completed_queue: "S3FetchQueue[DownloadResult]",
     exit_event: threading.Event,
     bucket: str,
     prefix: str,
@@ -399,15 +399,15 @@ def download_objects(
     delimiter: str,
     download_config: dict,
     dry_run: bool,
-    progress_tracker: Optional[Any] = None,  # noqa: ANN401
+    progress_tracker: Optional[ProgressProtocol] = None,
 ) -> None:
     """Download objects from the S3 bucket using the provided configuration.
 
     Args:
         client (S3Client): The S3 client.
         threads (int): Number of threads to use for downloading.
-        download_queue (S3FetchQueue): Queue for objects to download.
-        completed_queue (S3FetchQueue): Queue for completed downloads.
+        download_queue (S3FetchQueue[str]): Queue for objects to download.
+        completed_queue (S3FetchQueue[DownloadResult]): Queue for completed downloads.
         exit_event (threading.Event): Event to signal exit.
         bucket (str): S3 bucket name.
         prefix (str): S3 prefix to filter objects.
@@ -415,7 +415,7 @@ def download_objects(
         delimiter (str): Delimiter for S3 object keys.
         download_config (dict): Download configuration.
         dry_run (bool): If True, only list objects without downloading.
-        progress_tracker (Optional[Any]): Progress tracking instance.
+        progress_tracker (Optional[ProgressProtocol]): Progress tracking instance.
     """
     api.download_objects(
         client=client,

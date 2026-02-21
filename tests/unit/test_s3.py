@@ -14,6 +14,7 @@ from s3fetch.exceptions import (
     PrefixDoesNotExistError,
     S3FetchQueueClosed,
 )
+from s3fetch.s3 import DownloadResult
 
 
 def test_create_download_queue():
@@ -836,3 +837,118 @@ def test_download_object_oserror_raises_clear_message(tmp_path: Path, s3_client)
                 dry_run=False,
             )
     completed_queue.close()
+
+
+# ---------------------------------------------------------------------------
+# DownloadResult tests
+# ---------------------------------------------------------------------------
+
+
+def test_download_object_puts_download_result_on_success(
+    tmp_path: Path, s3_client: S3Client
+):
+    """A successful download puts a DownloadResult(success=True) on the completed queue."""  # noqa: E501
+    bucket = "my_bucket"
+    key = "result_test_file"
+    body = b"hello result"
+    completed_queue: s3.S3FetchQueue[DownloadResult] = s3.S3FetchQueue()
+    s3_client.create_bucket(Bucket=bucket)
+    s3_client.put_object(Bucket=bucket, Key=key, Body=body)
+    dest_filename = tmp_path / key
+
+    s3.download_object(
+        key=key,
+        dest_filename=dest_filename,
+        client=s3_client,
+        bucket=bucket,
+        download_config={},
+        completed_queue=completed_queue,
+        dry_run=False,
+    )
+
+    result = completed_queue.get()
+    assert isinstance(result, DownloadResult)
+    assert result.key == key
+    assert result.dest_filename == dest_filename
+    assert result.success is True
+    assert result.file_size == len(body)
+    assert result.error is None
+    completed_queue.close()
+
+
+def test_download_object_puts_download_result_on_failure(
+    tmp_path: Path, s3_client: S3Client
+):
+    """A failed download puts a DownloadResult(success=False) on the completed queue."""
+    from botocore.exceptions import ClientError as BotocoreClientError
+
+    key = "failing_key"
+    dest_filename = tmp_path / "failing_file"
+    bucket = "test_bucket"
+    completed_queue: s3.S3FetchQueue[DownloadResult] = s3.S3FetchQueue()
+
+    error_response = {"Error": {"Code": "SomeOtherError", "Message": "boom"}}
+    client_error = BotocoreClientError(error_response, "GetObject")
+
+    with patch.object(s3_client, "download_file") as mock_download:
+        mock_download.side_effect = client_error
+        with pytest.raises(BotocoreClientError):
+            s3.download_object(
+                key=key,
+                dest_filename=dest_filename,
+                client=s3_client,
+                bucket=bucket,
+                download_config={},
+                completed_queue=completed_queue,
+                dry_run=False,
+            )
+
+    result = completed_queue.get()
+    assert isinstance(result, DownloadResult)
+    assert result.key == key
+    assert result.dest_filename == dest_filename
+    assert result.success is False
+    assert result.file_size == 0
+    assert result.error is client_error
+    completed_queue.close()
+
+
+def test_download_result_dry_run_has_zero_file_size(
+    tmp_path: Path, s3_client: S3Client
+):
+    """In dry-run mode the DownloadResult is still emitted with file_size=0."""
+    bucket = "my_bucket"
+    key = "dry_run_file"
+    completed_queue: s3.S3FetchQueue[DownloadResult] = s3.S3FetchQueue()
+    s3_client.create_bucket(Bucket=bucket)
+    s3_client.put_object(Bucket=bucket, Key=key, Body=b"content")
+    dest_filename = tmp_path / key
+
+    s3.download_object(
+        key=key,
+        dest_filename=dest_filename,
+        client=s3_client,
+        bucket=bucket,
+        download_config={},
+        completed_queue=completed_queue,
+        dry_run=True,
+    )
+
+    result = completed_queue.get()
+    assert isinstance(result, DownloadResult)
+    assert result.key == key
+    assert result.success is True
+    assert result.file_size == 0
+    completed_queue.close()
+
+
+def test_s3fetch_queue_generic_typing():
+    """S3FetchQueue is generic and can hold any item type."""
+    str_queue: s3.S3FetchQueue[str] = s3.S3FetchQueue()
+    str_queue.put("hello")
+    assert str_queue.get() == "hello"
+
+    result_queue: s3.S3FetchQueue[DownloadResult] = s3.S3FetchQueue()
+    r = DownloadResult(key="k", dest_filename=Path("/tmp/k"), success=True)  # noqa: S108
+    result_queue.put(r)
+    assert result_queue.get() is r

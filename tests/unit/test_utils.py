@@ -2,6 +2,43 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from s3fetch import utils
+from s3fetch.utils import ProgressProtocol, ProgressTracker
+
+
+class TestProgressProtocol:
+    """Tests for the ProgressProtocol structural interface."""
+
+    def test_progress_tracker_satisfies_protocol(self):
+        """ProgressTracker must satisfy ProgressProtocol (runtime_checkable)."""
+        tracker = ProgressTracker()
+        assert isinstance(tracker, ProgressProtocol)
+
+    def test_custom_class_satisfies_protocol(self):
+        """Any class with the two required methods satisfies ProgressProtocol."""
+
+        class MinimalTracker:
+            def increment_found(self) -> None:
+                pass
+
+            def increment_downloaded(self, bytes_count: int) -> None:
+                pass
+
+        assert isinstance(MinimalTracker(), ProgressProtocol)
+
+    def test_missing_method_fails_protocol_check(self):
+        """A class missing either method should not satisfy ProgressProtocol."""
+
+        class IncompleteTracker:
+            def increment_found(self) -> None:
+                pass
+
+            # increment_downloaded is absent
+
+        assert not isinstance(IncompleteTracker(), ProgressProtocol)
+
+    def test_none_does_not_satisfy_protocol(self):
+        """None should not satisfy ProgressProtocol."""
+        assert not isinstance(None, ProgressProtocol)
 
 
 def test_create_exit_event():

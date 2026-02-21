@@ -524,6 +524,35 @@ def create_download_config(callback: Optional[Callable] = None) -> Dict[str, Any
     return extra_kwargs
 
 
+def _raise_download_client_error(e: ClientError, dest_filename: Path) -> None:
+    """Translate a ClientError from a download into a more specific exception.
+
+    Args:
+        e (ClientError): The ClientError to translate.
+        dest_filename (Path): The destination filename (used in error messages).
+
+    Raises:
+        InvalidCredentialsError: For credential-related errors.
+        PermissionError: For access-denied errors.
+        ClientError: Re-raised for any other unrecognised error codes.
+    """
+    error_code = e.response.get("Error", {}).get("Code")
+    if error_code in (
+        "InvalidAccessKeyId",
+        "SignatureDoesNotMatch",
+        "InvalidUserID.NotFound",
+    ):
+        raise InvalidCredentialsError(
+            f"Invalid AWS credentials during download: {error_code}"
+        ) from e
+    elif error_code == "TokenRefreshRequired":
+        raise InvalidCredentialsError("SSO token has expired during download") from e
+    elif error_code in ("AccessDenied", "UnauthorizedOperation"):
+        raise PermissionError(f"Access denied during download: {error_code}") from e
+    else:
+        raise e
+
+
 def download_object(
     key: str,
     dest_filename: Path,
@@ -550,36 +579,30 @@ def download_object(
         InvalidCredentialsError: Raised when AWS credentials are invalid.
         PermissionError: Raised when there is a permission error.
     """
+    # Download to a temp file in the same directory, then rename atomically.
+    # This ensures no partial/corrupted file is left on disk if the download
+    # is interrupted by a network error, Ctrl+C, or disk full.
+    tmp_filename = dest_filename.with_suffix(dest_filename.suffix + ".s3fetch_tmp")
     try:
         if not dry_run:
             client.download_file(
                 Bucket=bucket,
                 Key=key,
-                Filename=str(dest_filename),
+                Filename=str(tmp_filename),
                 **download_config,
             )
+            tmp_filename.replace(dest_filename)
     except ClientError as e:
-        error_code = e.response.get("Error", {}).get("Code")
-        if error_code in (
-            "InvalidAccessKeyId",
-            "SignatureDoesNotMatch",
-            "InvalidUserID.NotFound",
-        ):
-            raise InvalidCredentialsError(
-                f"Invalid AWS credentials during download: {error_code}"
-            ) from e
-        elif error_code == "TokenRefreshRequired":
-            raise InvalidCredentialsError(
-                "SSO token has expired during download"
-            ) from e
-        elif error_code in ("AccessDenied", "UnauthorizedOperation"):
-            raise PermissionError(f"Access denied during download: {error_code}") from e
-        else:
-            raise e
+        tmp_filename.unlink(missing_ok=True)
+        _raise_download_client_error(e, dest_filename)
     except PermissionError as e:
+        tmp_filename.unlink(missing_ok=True)
         raise PermissionError(
             f"Permission error when attempting to write object to {dest_filename}"
         ) from e
+    except Exception:
+        tmp_filename.unlink(missing_ok=True)
+        raise
     else:
         logger.debug(f"Downloaded {key} to {dest_filename}")
         if progress_tracker is not None and not dry_run:

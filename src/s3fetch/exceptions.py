@@ -59,3 +59,9 @@ class PrefixDoesNotExistError(S3FetchError):
     """Raised when the prefix does not exist."""
 
     pass
+
+
+class PathTraversalError(S3FetchError):
+    """Raised when an S3 object key resolves outside the download directory."""
+
+    pass

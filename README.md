@@ -20,6 +20,7 @@
     - [Download multiple objects concurrently](#download-multiple-objects-concurrently)
     - [Filter objects using regular expressions](#filter-objects-using-regular-expressions)
   - [Troubleshooting](#troubleshooting)
+    - [Existing files are silently overwritten](#existing-files-are-silently-overwritten)
     - [MacOS hangs when downloading using high number of threads](#macos-hangs-when-downloading-using-high-number-of-threads)
 <!--toc:end-->
 
@@ -462,6 +463,15 @@ success_count, failed_downloads = download_objects(
 ```
 
 ## Troubleshooting
+
+### Existing files are silently overwritten
+
+s3fetch does not check whether a file already exists before downloading. If you run s3fetch
+twice against the same download directory, existing files will be silently overwritten with
+the latest version from S3.
+
+If you want to avoid overwriting files, use a fresh download directory or move previously
+downloaded files before re-running.
 
 ### MacOS hangs when downloading using high number of threads
 

@@ -598,6 +598,11 @@ def download_object(
         raise PermissionError(
             f"Permission error when attempting to write object to {dest_filename}"
         ) from e
+    except OSError as e:
+        tmp_filename.unlink(missing_ok=True)
+        raise OSError(
+            f"I/O error writing '{dest_filename}': {e.strerror} (errno {e.errno})"
+        ) from e
     except Exception:
         tmp_filename.unlink(missing_ok=True)
         raise

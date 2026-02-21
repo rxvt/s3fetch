@@ -4,9 +4,20 @@ import logging
 import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from pathlib import Path
 from queue import Queue
-from typing import Any, Callable, Dict, Generator, Optional, Pattern, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Generic,
+    Optional,
+    Pattern,
+    Tuple,
+    TypeVar,
+)
 
 import boto3
 from boto3.s3.transfer import TransferConfig
@@ -29,44 +40,96 @@ logger = logging.getLogger(__name__)
 # the default of 10 is specified as a parameter default on the TransferConfig class.
 DEFAULT_S3TRANSFER_CONCURRENCY = 10
 
+T = TypeVar("T")
 
-class S3FetchQueue:
-    """Wrapper around a standard Python FIFO queue."""
 
-    def __init__(self):  # noqa: D107
-        self.queue = Queue()
+@dataclass
+class DownloadResult:
+    """The result of a single S3 object download attempt.
 
-    def put(self, key: Optional[str]) -> None:
-        """Add object key to the download queue."""
-        self.queue.put_nowait(key)
+    Instances of this class are placed on the completed queue after every
+    download attempt — whether it succeeded or failed — giving consumers
+    real-time, per-object notification with rich context.
 
-    def get(self, block: bool = False) -> str:
-        """Get object key from the download queue.
+    Attributes:
+        key (str): The S3 object key that was downloaded.
+        dest_filename (Path): The absolute local path where the object was
+            (or would have been) written.
+        success (bool): True if the download completed successfully.
+        file_size (int): Size of the downloaded file in bytes.  0 on failure
+            or in dry-run mode.
+        error (Optional[Exception]): The exception that caused the download to
+            fail, or None on success.
+    """
+
+    key: str
+    dest_filename: Path
+    success: bool
+    file_size: int = 0
+    error: Optional[Exception] = field(default=None, repr=False)
+
+
+class S3FetchQueue(Generic[T]):
+    """Generic wrapper around a standard Python FIFO queue.
+
+    Type parameter ``T`` is the item type stored in the queue.  The sentinel
+    value used to signal queue closure is always ``None`` (never a valid item).
+
+    Examples:
+        Download queue (keys only)::
+
+            q: S3FetchQueue[str] = S3FetchQueue()
+
+        Completed-downloads queue (rich result objects)::
+
+            q: S3FetchQueue[DownloadResult] = S3FetchQueue()
+    """
+
+    def __init__(self) -> None:  # noqa: D107
+        self.queue: Queue[Optional[T]] = Queue()
+
+    def put(self, item: T) -> None:
+        """Add an item to the queue.
 
         Args:
-            block (bool, optional): Block until an item if available. Defaults to False.
+            item (T): The item to enqueue.
+        """
+        self.queue.put_nowait(item)
+
+    def get(self, block: bool = False) -> T:
+        """Remove and return the next item from the queue.
+
+        Args:
+            block (bool, optional): Block until an item is available.
+                Defaults to False.
 
         Raises:
-            S3FetchQueueEmpty: Raised when the queue is empty.
+            S3FetchQueueClosed: Raised when the sentinel ``None`` is received,
+                indicating the queue has been closed by the producer.
 
         Returns:
-            str: S3 object key.
+            T: The next item from the queue.
         """
-        key = self.queue.get(block=block)
-        if key is None:
+        item = self.queue.get(block=block)
+        if item is None:
             raise S3FetchQueueClosed
-        return key
+        return item
 
     def close(self) -> None:
-        """Close queue by adding a sentinel message of None onto the download queue."""
+        """Close the queue by placing a sentinel ``None`` onto it.
+
+        After calling this method the consumer will raise
+        :class:`S3FetchQueueClosed` the next time it calls :meth:`get`.
+        """
         self.queue.put(None)
 
 
-def get_queue(queue_type: str) -> S3FetchQueue:
+def get_queue(queue_type: str) -> "S3FetchQueue[Any]":
     """Factory function to create a download or completion queue.
 
     Args:
-        queue_type (str): Type of queue to create. Must be 'download' or 'completion'.
+        queue_type (str): Type of queue to create. Must be 'download' or
+            'completion'.
 
     Returns:
         S3FetchQueue: FIFO queue instance.
@@ -83,7 +146,7 @@ def create_list_objects_thread(
     bucket: str,
     prefix: str,
     client: S3Client,
-    download_queue: S3FetchQueue,
+    download_queue: "S3FetchQueue[str]",
     delimiter: str,
     regex: Optional[str],
     exit_event: threading.Event,
@@ -99,7 +162,7 @@ def create_list_objects_thread(
         bucket (str): S3 bucket name.
         prefix (str): S3 object key prefix.
         client (S3Client): Boto3 S3 client object.
-        download_queue (S3FetchQueue): FIFO download queue.
+        download_queue (S3FetchQueue[str]): FIFO download queue.
         delimiter (str): Delimiter for the logical folder hierarchy.
         regex (Optional[str]): Regular expression to use for filtering objects.
         exit_event (threading.Event): Notify that script to exit.
@@ -128,8 +191,8 @@ def create_list_objects_thread(
 def create_download_threads(
     client: S3Client,
     threads: int,
-    download_queue: S3FetchQueue,
-    completed_queue: S3FetchQueue,
+    download_queue: "S3FetchQueue[str]",
+    completed_queue: "S3FetchQueue[DownloadResult]",
     exit_event: threading.Event,
     bucket: str,
     prefix: str,
@@ -144,8 +207,8 @@ def create_download_threads(
     Args:
         client (S3Client): S3 client object.
         threads (int): Number of threads to use for downloading objects.
-        download_queue (S3FetchQueue): Download queue.
-        completed_queue (S3FetchQueue): Completed download queue.
+        download_queue (S3FetchQueue[str]): Download queue.
+        completed_queue (S3FetchQueue[DownloadResult]): Completed download queue.
         exit_event (threading.Event): Notify the script to exit.
         bucket (str): S3 bucket name, e.g. `my-bucket`.
         prefix (str): S3 object key prefix, e.g. `my/test/objects/`.
@@ -156,7 +219,8 @@ def create_download_threads(
         progress_tracker (Optional[Any]): Progress tracker instance.
 
     Returns:
-        Tuple[int, list]: _description_
+        Tuple[int, list]: Number of successful downloads and list of failed
+            downloads as ``(key, exception)`` tuples.
     """
     successful_downloads = 0
     failed_downloads: list[str] = []
@@ -215,7 +279,7 @@ def generate_stats(futures: dict) -> Tuple[int, list]:
 
 def list_objects(
     client: S3Client,
-    queue: S3FetchQueue,
+    queue: "S3FetchQueue[str]",
     bucket: str,
     prefix: str,
     delimiter: str,
@@ -227,7 +291,7 @@ def list_objects(
 
     Args:
         client (S3Client): boto3.S3Client object.
-        queue (S3FetchQueue): FIFO download queue.
+        queue (S3FetchQueue[str]): FIFO download queue.
         bucket (str): S3 bucket name.
         prefix (str): Download objects starting with this prefix.
         delimiter (str): Delimiter for the logical folder hierarchy.
@@ -371,14 +435,14 @@ def filter_by_regex(key: str, regex: Pattern) -> bool:
 
 def add_object_to_download_queue(
     key: str,
-    queue: S3FetchQueue,
+    queue: "S3FetchQueue[str]",
     progress_tracker: Optional[Any] = None,  # noqa: ANN401
 ) -> None:
     """Add S3 object to download queue.
 
     Args:
         key (str): S3 object key.
-        queue (S3FetchQueue): FIFO download queue.
+        queue (S3FetchQueue[str]): FIFO download queue.
         progress_tracker (Optional[Any]): Progress tracker instance.
     """
     queue.put(key)
@@ -387,13 +451,13 @@ def add_object_to_download_queue(
     logger.debug("Added %s to download queue", key)
 
 
-def close_download_queue(queue: S3FetchQueue) -> None:
+def close_download_queue(queue: "S3FetchQueue[str]") -> None:
     """Add sentinel None message onto the download queue.
 
     Indicates all objects have been listed and added to the download queue.
 
     Args:
-        queue (S3FetchQueue): FIFO download queue.
+        queue (S3FetchQueue[str]): FIFO download queue.
     """
     queue.close()
     logger.debug("Added sentinel message to download queue")
@@ -522,6 +586,22 @@ def create_download_config(callback: Optional[Callable] = None) -> Dict[str, Any
     return extra_kwargs
 
 
+def _get_file_size(path: Path) -> int:
+    """Return the size of a file in bytes, or 0 if the stat call fails.
+
+    Args:
+        path (Path): Path to the file.
+
+    Returns:
+        int: File size in bytes, or 0 on error.
+    """
+    try:
+        return path.stat().st_size
+    except OSError:
+        logger.warning(f"Could not get file size for {path}")
+        return 0
+
+
 def _raise_download_client_error(e: ClientError, dest_filename: Path) -> None:
     """Translate a ClientError from a download into a more specific exception.
 
@@ -557,11 +637,15 @@ def download_object(
     client: S3Client,
     bucket: str,
     download_config: dict,
-    completed_queue: S3FetchQueue,
+    completed_queue: "S3FetchQueue[DownloadResult]",
     dry_run: bool = False,
     progress_tracker: Optional[Any] = None,  # noqa: ANN401
 ) -> None:
     """Download an object from S3.
+
+    On completion — whether success or failure — a :class:`DownloadResult` is
+    placed on ``completed_queue`` so that consumers receive real-time,
+    per-object notifications.
 
     Args:
         key (str): S3 object key, e.g. `my/test/objects/one/mytestobject/one`.
@@ -569,7 +653,7 @@ def download_object(
         client (S3Client): S3 client object, e.g. `boto3.client("s3")`.
         bucket (str): S3 bucket name, e.g. `my-bucket`.
         download_config (dict): Download configuration.
-        completed_queue (S3FetchQueue): Completed download queue.
+        completed_queue (S3FetchQueue[DownloadResult]): Completed download queue.
         dry_run (bool): Run in dry run mode.
         progress_tracker (Optional[Any]): Progress tracker instance.
 
@@ -592,29 +676,45 @@ def download_object(
             tmp_filename.replace(dest_filename)
     except ClientError as e:
         tmp_filename.unlink(missing_ok=True)
+        completed_queue.put(
+            DownloadResult(key=key, dest_filename=dest_filename, success=False, error=e)
+        )
         _raise_download_client_error(e, dest_filename)
     except PermissionError as e:
         tmp_filename.unlink(missing_ok=True)
+        completed_queue.put(
+            DownloadResult(key=key, dest_filename=dest_filename, success=False, error=e)
+        )
         raise PermissionError(
             f"Permission error when attempting to write object to {dest_filename}"
         ) from e
     except OSError as e:
         tmp_filename.unlink(missing_ok=True)
+        completed_queue.put(
+            DownloadResult(key=key, dest_filename=dest_filename, success=False, error=e)
+        )
         raise OSError(
             f"I/O error writing '{dest_filename}': {e.strerror} (errno {e.errno})"
         ) from e
-    except Exception:
+    except Exception as e:
         tmp_filename.unlink(missing_ok=True)
+        completed_queue.put(
+            DownloadResult(key=key, dest_filename=dest_filename, success=False, error=e)
+        )
         raise
     else:
         logger.debug(f"Downloaded {key} to {dest_filename}")
+        file_size = _get_file_size(dest_filename) if not dry_run else 0
         if progress_tracker is not None and not dry_run:
-            try:
-                file_size = dest_filename.stat().st_size
-                progress_tracker.increment_downloaded(file_size)
-            except OSError:
-                logger.warning(f"Could not get file size for {dest_filename}")
-        completed_queue.put(key)
+            progress_tracker.increment_downloaded(file_size)
+        completed_queue.put(
+            DownloadResult(
+                key=key,
+                dest_filename=dest_filename,
+                success=True,
+                file_size=file_size,
+            )
+        )
 
 
 def download(
@@ -626,7 +726,7 @@ def download(
     prefix: str,
     download_dir: Path,
     download_config: dict,
-    completed_queue: S3FetchQueue,
+    completed_queue: "S3FetchQueue[DownloadResult]",
     dry_run: bool = False,
     progress_tracker: Optional[Any] = None,  # noqa: ANN401
 ) -> None:
@@ -636,14 +736,12 @@ def download(
         client (S3Client): boto3.S3Client object.
         bucket (str): S3 bucket name.
         key (str): S3 object key.
-        dest_filename (str): Absolute local destination filename.
         exit_event (threading.Event): Notify that script to exit.
-        config (Optional[TransferConfig], optional): S3 TransferConfig object.
         download_dir (Path): Download directory, e.g. `~/Downloads`.
         delimiter (str): S3 object key delimiter, e.g. `/`.
         prefix (str): S3 object key prefix, e.g. `my/test/objects/`.
         download_config (dict): Download configuration.
-        completed_queue (S3FetchQueue): Completed download queue.
+        completed_queue (S3FetchQueue[DownloadResult]): Completed download queue.
         dry_run (bool): Run in dry run mode.
         progress_tracker (Optional[Any]): Progress tracker instance.
 

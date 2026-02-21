@@ -5,13 +5,52 @@ import os
 import threading
 import time
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Protocol, runtime_checkable
 
 from . import fs
 from .exceptions import S3FetchQueueClosed
-from .s3 import S3FetchQueue
+from .s3 import DownloadResult, S3FetchQueue
 
 logger = logging.getLogger(__name__)
+
+
+@runtime_checkable
+class ProgressProtocol(Protocol):
+    """Protocol for progress tracking during S3 downloads.
+
+    Any object that implements :meth:`increment_found` and
+    :meth:`increment_downloaded` satisfies this protocol — no inheritance
+    required.  The built-in :class:`ProgressTracker` already conforms.
+
+    Example — custom tracker that emits to a Rich progress bar::
+
+        class RichProgressTracker:
+            def __init__(self, task):
+                self.task = task
+
+            def increment_found(self) -> None:
+                # update total count label
+                ...
+
+            def increment_downloaded(self, bytes_count: int) -> None:
+                self.task.advance(bytes_count)
+
+    Pass your tracker to :func:`s3fetch.api.list_objects` and
+    :func:`s3fetch.api.download_objects` via the ``progress_tracker``
+    parameter.
+    """
+
+    def increment_found(self) -> None:
+        """Called once for each S3 object discovered during listing."""
+        ...
+
+    def increment_downloaded(self, bytes_count: int) -> None:
+        """Called once for each successfully downloaded object.
+
+        Args:
+            bytes_count (int): Size of the downloaded file in bytes.
+        """
+        ...
 
 
 class ProgressTracker:
@@ -134,16 +173,26 @@ def custom_print(msg: str, quiet: bool, *, end: str = "\n", flush: bool = True) 
         print(msg, end=end, flush=flush)
 
 
-def print_completed_objects(queue: S3FetchQueue) -> None:
-    """Watch the completed object queue and print the object keys to STDOUT.
+def print_completed_objects(queue: "S3FetchQueue[DownloadResult]") -> None:
+    """Watch the completed object queue and print each object key to STDOUT.
+
+    Consumes :class:`~s3fetch.s3.DownloadResult` objects from the queue as
+    they arrive and prints the ``key`` of every successful download.  Failed
+    downloads are silently skipped by this function (the failure is already
+    captured in the result and re-raised by the download thread).
+
+    To react to every result — including failures — pass your own handler to
+    :func:`s3fetch.api.create_completed_objects_thread` instead of this
+    function.
 
     Args:
-        queue (S3FetchQueue): FIFO download queue.
+        queue (S3FetchQueue[DownloadResult]): Completed-downloads queue.
     """
     while True:
         try:
-            key = queue.get(block=True)
-            custom_print(key, False)
+            result = queue.get(block=True)
+            if result.success:
+                custom_print(result.key, False)
         except S3FetchQueueClosed:
             logger.debug("S3FetchQueueClosed exception received")
             break

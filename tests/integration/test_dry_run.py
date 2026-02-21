@@ -8,7 +8,7 @@ from moto import mock_aws
 
 from s3fetch.api import download_objects, list_objects
 from s3fetch.exceptions import S3FetchQueueClosed
-from s3fetch.s3 import S3FetchQueue, create_download_config
+from s3fetch.s3 import DownloadResult, S3FetchQueue, create_download_config
 
 
 @mock_aws
@@ -81,8 +81,9 @@ def test_dry_run_functionality(tmpdir):
 
     # Verify all items were reported as completed
     assert len(completed_items) == len(test_objects), "All items should be counted"
-    # Check that completed queue has all test objects
-    assert set(completed_items) == set(test_objects)
+    # Each item is now a DownloadResult; extract the keys for comparison
+    assert all(isinstance(item, DownloadResult) for item in completed_items)
+    assert {item.key for item in completed_items} == set(test_objects)
 
     # Most importantly, verify no files were actually downloaded
     downloaded_files = list(download_dir.rglob("*.*"))  # Get all files, not directories

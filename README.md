@@ -140,27 +140,37 @@ For development work on s3fetch:
 ```text
 Usage: s3fetch [OPTIONS] S3_URI
 
-  Easily download objects from an S3 bucket.
+  Concurrently download objects from S3 buckets.
 
-  Example: s3fetch s3://my-test-bucket/birthday-photos/2020-01-01
+  Examples:
 
-  The above will download all S3 objects located under the `birthday-
-  photos/2020-01-01` prefix.
+    s3fetch s3://my-bucket/
 
-  You can download all objects in a bucket by using `s3fetch s3://my-test-
-  bucket/`
+    s3fetch s3://my-bucket/photos/ --regex ".*\.jpg$"
+
+    s3fetch s3://my-bucket/data/ --dry-run --threads 10
 
 Options:
-  --region TEXT           Bucket region. Defaults to 'us-east-1'.
-  -d, --debug             Enable debug output.
-  --download-dir TEXT     Download directory. Defaults to current directory.
-  -r, --regex TEXT        Filter list of available objects by regex.
-  -t, --threads INTEGER   Number of threads to use. Defaults to core count.
-  --dry-run, --list-only  List objects only, do not download.
-  --delimiter TEXT        Specify the "directory" delimiter. Defaults to '/'.
-  -q, --quiet             Don't print to stdout.
-  --version               Print out version information.
-  --help                  Show this message and exit.
+  --version                       Show the version and exit.
+  --region TEXT                   AWS region for the S3 bucket (e.g., us-
+                                  east-1, eu-west-1). Defaults to 'us-east-1'.
+  -d, --debug                     Enable verbose debug output.
+  --download-dir PATH             Local directory to save downloaded files.
+                                  Creates if missing. Defaults to current
+                                  directory.
+  -r, --regex TEXT                Filter objects using regular expressions
+                                  (e.g., '.*\.jpg$' for JPEG files).
+  -t, --threads INTEGER           Number of concurrent download threads
+                                  (1-1000). Defaults to CPU core count.
+  --dry-run, --list-only          Show what would be downloaded without
+                                  actually downloading files.
+  --delimiter TEXT                Object key delimiter for path structure.
+                                  Defaults to '/'.
+  -q, --quiet                     Suppress all output except errors.
+  --progress [none|simple|detailed]
+                                  Show download progress. 'simple' shows basic
+                                  stats, 'detailed' shows real-time updates.
+  --help                          Show this message and exit.
 ```
 
 ## Examples

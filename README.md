@@ -288,22 +288,49 @@ s3fetch_logger.disabled = True
 S3Fetch includes built-in progress tracking capabilities that you can use to monitor download progress in your applications:
 
 ```python
-import s3fetch
+import boto3
+import threading
+from s3fetch.api import list_objects, download_objects
+from s3fetch.s3 import S3FetchQueue, create_download_config
 from s3fetch.utils import ProgressTracker
 
 # Create a progress tracker
 tracker = ProgressTracker()
 
-# Download with progress tracking
-s3fetch.download_bucket(
+# Setup S3 client and queues
+s3_client = boto3.client("s3")
+download_queue = S3FetchQueue()
+completed_queue = S3FetchQueue()
+exit_event = threading.Event()
+
+# List and download objects with progress tracking
+list_objects(
+    bucket="my-bucket",
+    prefix="data/",
+    client=s3_client,
+    download_queue=download_queue,
+    delimiter="/",
+    regex=None,
+    exit_event=exit_event,
+    progress_tracker=tracker,
+)
+
+download_config = create_download_config()
+success_count, failed_downloads = download_objects(
+    client=s3_client,
+    threads=10,
+    download_queue=download_queue,
+    completed_queue=completed_queue,
+    exit_event=exit_event,
     bucket="my-bucket",
     prefix="data/",
     download_dir="./downloads",
-    threads=10,
-    progress_tracker=tracker
+    delimiter="/",
+    download_config=download_config,
+    progress_tracker=tracker,
 )
 
-# Monitor progress during download
+# Inspect progress stats after download
 stats = tracker.get_stats()
 print(f"Found: {stats['objects_found']} objects")
 print(f"Downloaded: {stats['objects_downloaded']} objects")

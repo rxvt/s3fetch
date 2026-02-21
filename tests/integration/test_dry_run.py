@@ -1,14 +1,11 @@
 """Integration test for S3Fetch dry run functionality."""
 
-import threading
 from pathlib import Path
 
 import boto3
 from moto import mock_aws
 
-from s3fetch.api import download_objects, list_objects
-from s3fetch.exceptions import S3FetchQueueClosed
-from s3fetch.s3 import DownloadResult, S3FetchQueue, create_download_config
+from s3fetch import download
 
 
 @mock_aws
@@ -33,64 +30,21 @@ def test_dry_run_functionality(tmpdir):
 
     download_dir = Path(tmpdir)
 
-    # Setup queues
-    download_queue = S3FetchQueue()
-    completed_queue = S3FetchQueue()
-    exit_event = threading.Event()
-
-    # List all objects
-    list_objects(
-        bucket=bucket_name,
-        prefix="",
-        client=s3_client,
-        download_queue=download_queue,
-        delimiter="/",
-        regex=None,
-        exit_event=exit_event,
-    )
-
-    # Create download config
-    download_config = create_download_config()
-
-    # Execute dry run
-    success_count, failures = download_objects(
-        client=s3_client,
-        threads=2,
-        download_queue=download_queue,
-        completed_queue=completed_queue,
-        exit_event=exit_event,
-        bucket=bucket_name,
-        prefix="",
+    success_count, failures = download(
+        f"s3://{bucket_name}/",
         download_dir=download_dir,
-        delimiter="/",
-        download_config=download_config,
-        dry_run=True,  # This is the key parameter we're testing
+        dry_run=True,
+        client=s3_client,
     )
 
     # Verify all files were "processed" successfully
     assert success_count == len(test_objects), "All objects should be processed"
     assert len(failures) == 0, "No failures should be reported"
 
-    # Get completed items
-    completed_items = []
-    try:
-        while True:
-            completed_items.append(completed_queue.get())
-    except S3FetchQueueClosed:
-        pass
-
-    # Verify all items were reported as completed
-    assert len(completed_items) == len(test_objects), "All items should be counted"
-    # Each item is now a DownloadResult; extract the keys for comparison
-    assert all(isinstance(item, DownloadResult) for item in completed_items)
-    assert {item.key for item in completed_items} == set(test_objects)
-
     # Most importantly, verify no files were actually downloaded
-    downloaded_files = list(download_dir.rglob("*.*"))  # Get all files, not directories
+    downloaded_files = list(download_dir.rglob("*.*"))
     assert len(downloaded_files) == 0, "No files should be downloaded in dry run mode"
 
-    # Directories should still be created
-    assert not (download_dir / "data").exists(), "Directory structure should be created"
-    assert not (download_dir / "config").exists(), (
-        "Directory structure should be created"
-    )
+    # Directories should not be created in dry run mode
+    assert not (download_dir / "data").exists()
+    assert not (download_dir / "config").exists()

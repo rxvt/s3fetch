@@ -1,14 +1,11 @@
 """Integration test for S3 regex filtering functionality."""
 
-import threading
-import time
 from pathlib import Path
 
 import boto3
 from moto import mock_aws
 
-from s3fetch.api import download_objects, list_objects
-from s3fetch.s3 import S3FetchQueue, create_download_config
+from s3fetch import download
 
 
 @mock_aws
@@ -37,39 +34,12 @@ def test_s3_regex_filtering_with_moto(tmpdir):
 
     download_dir = Path(tmpdir)
 
-    # Filter for .txt files only
-    download_queue = S3FetchQueue()
-    completed_queue = S3FetchQueue()
-    exit_event = threading.Event()
-
-    list_objects(
-        bucket=bucket_name,
-        prefix="",
-        client=s3_client,
-        download_queue=download_queue,
-        delimiter="/",
-        regex=r"\.txt$",
-        exit_event=exit_event,
-    )
-
-    # Wait a moment for listing to populate queue
-    time.sleep(0.1)
-
-    # Create proper download config using factory function
-    download_config = create_download_config()
-
-    download_objects(
-        client=s3_client,
-        threads=1,
-        download_queue=download_queue,
-        completed_queue=completed_queue,
-        exit_event=exit_event,
-        bucket=bucket_name,
-        prefix="",
+    download(
+        f"s3://{bucket_name}/",
         download_dir=download_dir,
-        delimiter="/",
-        download_config=download_config,
-        dry_run=False,
+        regex=r"\.txt$",
+        threads=1,
+        client=s3_client,
     )
 
     # Verify only .txt files were downloaded

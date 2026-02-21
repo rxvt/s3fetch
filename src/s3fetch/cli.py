@@ -375,7 +375,7 @@ def list_objects(
         exit_event (threading.Event): Event to signal exit.
         progress_tracker (Optional[ProgressProtocol]): Progress tracking instance.
     """
-    api.list_objects(
+    api._list_objects(
         client=client,
         download_queue=download_queue,
         bucket=bucket,
@@ -417,7 +417,7 @@ def download_objects(
         dry_run (bool): If True, only list objects without downloading.
         progress_tracker (Optional[ProgressProtocol]): Progress tracking instance.
     """
-    api.download_objects(
+    api._download_objects(
         client=client,
         threads=threads,
         download_queue=download_queue,
@@ -487,7 +487,7 @@ def run_cli(  # noqa: C901
         )
         download_config = s3.create_download_config(callback=None)
         if not quiet:
-            api.create_completed_objects_thread(
+            api._create_completed_objects_thread(
                 queue=completed_queue,
                 func=utils.print_completed_objects,
             )

@@ -7,14 +7,132 @@ from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 from mypy_boto3_s3.client import S3Client
 
-from . import s3
+from . import aws, s3, utils
 from .s3 import DownloadResult, S3FetchQueue
 from .utils import ProgressProtocol
 
 logger = logging.getLogger(__name__)
 
 
-def list_objects(
+def download(
+    s3_uri: str,
+    download_dir: Union[str, Path] = ".",
+    *,
+    regex: Optional[str] = None,
+    threads: Optional[int] = None,
+    region: str = "us-east-1",
+    delimiter: str = "/",
+    dry_run: bool = False,
+    client: Optional[S3Client] = None,
+    on_complete: Optional[Callable[[str], None]] = None,
+    progress_tracker: Optional[ProgressProtocol] = None,
+) -> Tuple[int, list]:
+    r"""Download objects from an S3 URI to a local directory.
+
+    Args:
+        s3_uri: S3 URI to download from, e.g. ``s3://my-bucket/prefix/``.
+        download_dir: Local directory to save downloaded files. Defaults to
+            the current working directory.
+        regex: Optional regex pattern to filter object keys.
+        threads: Number of concurrent download threads. Defaults to CPU count.
+        region: AWS region name. Defaults to ``"us-east-1"``. Ignored when a
+            custom ``client`` is provided.
+        delimiter: S3 key delimiter. Defaults to ``"/"``.
+        dry_run: If ``True``, list objects without downloading.
+        client: Optional pre-built boto3 S3 client. Created internally using
+            ``region`` and the default credential chain if not provided.
+        on_complete: Optional callback invoked with the object key each time a
+            download completes.
+        progress_tracker: Optional progress tracker instance for monitoring
+            progress.
+
+    Returns:
+        A tuple of ``(success_count, failures)`` where *failures* is a list of
+        ``(key, exception)`` pairs for objects that could not be downloaded.
+
+    Example::
+
+        from s3fetch import download
+
+        success, failures = download("s3://my-bucket/prefix/")
+
+    Example with options::
+
+        from s3fetch import download
+
+        success, failures = download(
+            "s3://my-bucket/data/",
+            download_dir="./out",
+            regex=r"\\.csv$",
+            threads=20,
+        )
+    """
+    bucket, prefix = s3.split_uri_into_bucket_and_prefix(s3_uri, delimiter)
+    download_dir = utils.set_download_dir(
+        Path(download_dir) if isinstance(download_dir, str) else download_dir
+    )
+
+    if threads is None:
+        threads = utils.get_available_threads()
+
+    conn_pool_size = aws.calc_connection_pool_size(
+        threads, s3.DEFAULT_S3TRANSFER_CONCURRENCY
+    )
+
+    if client is None:
+        client = aws.get_client(region, conn_pool_size)
+
+    download_queue: S3FetchQueue[str] = s3.get_queue("download")
+    completed_queue: S3FetchQueue[DownloadResult] = s3.get_queue("completion")
+    exit_event = utils.create_exit_event()
+    download_config = s3.create_download_config(callback=None)
+
+    if on_complete is not None:
+
+        def _on_complete_consumer(queue: S3FetchQueue[DownloadResult]) -> None:
+            from .exceptions import S3FetchQueueClosed
+
+            while True:
+                try:
+                    result = queue.get(block=True)
+                    if result.success:
+                        on_complete(result.key)
+                except S3FetchQueueClosed:
+                    break
+
+        _create_completed_objects_thread(
+            queue=completed_queue,
+            func=_on_complete_consumer,
+        )
+
+    _list_objects(
+        bucket=bucket,
+        prefix=prefix,
+        client=client,
+        download_queue=download_queue,
+        delimiter=delimiter,
+        regex=regex,
+        exit_event=exit_event,
+        progress_tracker=progress_tracker,
+    )
+
+    return _download_objects(
+        client=client,
+        threads=threads,
+        download_queue=download_queue,
+        completed_queue=completed_queue,
+        exit_event=exit_event,
+        bucket=bucket,
+        prefix=prefix,
+        download_dir=download_dir,
+        delimiter=delimiter,
+        download_config=download_config,
+        dry_run=dry_run,
+        progress_tracker=progress_tracker,
+    )
+
+
+def _list_objects(
     bucket: str,
     prefix: str,
     client: S3Client,
@@ -24,11 +142,11 @@ def list_objects(
     exit_event: threading.Event,
     progress_tracker: Optional[ProgressProtocol] = None,
 ) -> None:
-    """Starts a seperate thread that lists of objects from the specified S3 bucket.
+    """Start a background thread that lists objects from the specified S3 bucket.
 
-    Starts a seperate thread that lists of objects from the specified S3 bucket
-    and prefix, filters the object list and adds the valid objects to the download
-    queue.
+    Starts a separate thread that lists objects from the specified S3 bucket
+    and prefix, filters the object list and adds the valid objects to the
+    download queue.
 
     Args:
         bucket (str): S3 bucket name.
@@ -53,7 +171,7 @@ def list_objects(
     list_objects_thread.start()
 
 
-def download_objects(
+def _download_objects(
     client: S3Client,
     threads: int,
     download_queue: "S3FetchQueue[str]",
@@ -91,11 +209,10 @@ def download_objects(
         Tuple[int, list]: Number of successful downloads and list of failed
             downloads as ``(key, exception)`` tuples.
     """
-    # Convert string to Path if needed
     if isinstance(download_dir, str):
         download_dir = Path(download_dir)
 
-    stats = s3.create_download_threads(
+    success, failures = s3.create_download_threads(
         client=client,
         threads=threads,
         download_queue=download_queue,
@@ -109,8 +226,6 @@ def download_objects(
         dry_run=dry_run,
         progress_tracker=progress_tracker,
     )
-
-    success, failures = stats
     return success, failures
 
 
@@ -150,4 +265,9 @@ def create_completed_objects_thread(
             "queue": queue,
             **kwargs,
         },
+        daemon=True,
     ).start()
+
+
+# Internal alias used by cli.py
+_create_completed_objects_thread = create_completed_objects_thread

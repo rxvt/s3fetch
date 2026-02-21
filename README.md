@@ -229,48 +229,32 @@ s3fetch s3://my-test-bucket/ --regex '\.dmg$'
 
 ## Library Usage
 
-S3Fetch can be used as a library in your Python projects. Here's how to use it programmatically:
+S3Fetch can be used as a library in your Python projects.
 
 ### Basic Library Usage
 
 ```python
-import boto3
-import threading
-from s3fetch.api import list_objects, download_objects
-from s3fetch.s3 import S3FetchQueue, create_download_config
+from s3fetch import download
 
-# Setup S3 client and queues
-s3_client = boto3.client("s3")
-download_queue = S3FetchQueue()
-completed_queue = S3FetchQueue()
-exit_event = threading.Event()
-
-# Download all objects from a bucket prefix
-list_objects(
-    bucket="my-test-bucket",
-    prefix="data/2023/",
-    client=s3_client,
-    download_queue=download_queue,
-    delimiter="/",
-    regex=None,
-    exit_event=exit_event
-)
-
-download_config = create_download_config()
-success_count, failed_downloads = download_objects(
-    client=s3_client,
-    threads=10,
-    download_queue=download_queue,
-    completed_queue=completed_queue,
-    exit_event=exit_event,
-    bucket="my-test-bucket",
-    prefix="data/2023/",
-    download_dir="./downloads",
-    delimiter="/",
-    download_config=download_config
-)
+success_count, failures = download("s3://my-bucket/data/2023/")
 
 print(f"Downloaded {success_count} objects successfully")
+if failures:
+    print(f"{len(failures)} objects failed to download")
+```
+
+### Common Options
+
+```python
+from s3fetch import download
+
+success_count, failures = download(
+    "s3://my-bucket/data/",
+    download_dir="./downloads",   # local destination (default: cwd)
+    regex=r"\.csv$",              # only download .csv files
+    threads=20,                   # concurrent downloads (default: CPU count)
+    dry_run=False,                # set True to list without downloading
+)
 ```
 
 ### Configuring Logging
@@ -279,86 +263,45 @@ When using S3Fetch as a library, you can configure its logging behavior:
 
 ```python
 import logging
-import s3fetch
 
-# Option 1: Configure s3fetch's logger level
-s3fetch_logger = logging.getLogger("s3fetch")
-s3fetch_logger.setLevel(logging.WARNING)  # Reduce s3fetch output
-s3fetch_logger.addHandler(logging.StreamHandler())
+# Option 1: Reduce s3fetch output
+logging.getLogger("s3fetch").setLevel(logging.WARNING)
 
 # Option 2: Disable s3fetch logging completely
-s3fetch_logger = logging.getLogger("s3fetch")
-s3fetch_logger.disabled = True
-
-# Then use s3fetch normally with the API functions
-# (See Basic Library Usage section for complete example)
+logging.getLogger("s3fetch").disabled = True
 ```
 
 ### Progress Tracking
 
-S3Fetch includes built-in progress tracking capabilities that you can use to monitor download progress in your applications:
-
 ```python
-import boto3
-import threading
-from s3fetch.api import list_objects, download_objects
-from s3fetch.s3 import S3FetchQueue, create_download_config
+from s3fetch import download
 from s3fetch.utils import ProgressTracker
 
-# Create a progress tracker
 tracker = ProgressTracker()
-
-# Setup S3 client and queues
-s3_client = boto3.client("s3")
-download_queue = S3FetchQueue()
-completed_queue = S3FetchQueue()
-exit_event = threading.Event()
-
-# List and download objects with progress tracking
-list_objects(
-    bucket="my-bucket",
-    prefix="data/",
-    client=s3_client,
-    download_queue=download_queue,
-    delimiter="/",
-    regex=None,
-    exit_event=exit_event,
+success_count, failures = download(
+    "s3://my-bucket/data/",
     progress_tracker=tracker,
 )
 
-download_config = create_download_config()
-success_count, failed_downloads = download_objects(
-    client=s3_client,
-    threads=10,
-    download_queue=download_queue,
-    completed_queue=completed_queue,
-    exit_event=exit_event,
-    bucket="my-bucket",
-    prefix="data/",
-    download_dir="./downloads",
-    delimiter="/",
-    download_config=download_config,
-    progress_tracker=tracker,
-)
-
-# Inspect progress stats after download
 stats = tracker.get_stats()
-print(f"Found: {stats['objects_found']} objects")
+print(f"Found:      {stats['objects_found']} objects")
 print(f"Downloaded: {stats['objects_downloaded']} objects")
-print(f"Total size: {stats['bytes_downloaded']} bytes")
-print(f"Speed: {stats['download_speed_mbps']:.2f} MB/s")
+print(f"Total size: {stats['bytes_downloaded'] / (1024 * 1024):.1f} MB")
+print(f"Speed:      {stats['download_speed_mbps']:.2f} MB/s")
 ```
 
-For more granular control, you can also monitor progress in real-time:
+The `ProgressTracker` is thread-safe and can be polled from a separate thread
+for real-time updates while `download()` is running.
+
+### Advanced Usage — Custom boto3 Client
+
+Pass a pre-built boto3 client to use a custom session, role, or region:
 
 ```python
 import boto3
-import threading
-import time
-from s3fetch.api import list_objects, download_objects
-from s3fetch.s3 import S3FetchQueue, create_download_config
-from s3fetch.utils import ProgressTracker
+from s3fetch import download
 
+<<<<<<< HEAD
 def monitor_progress(tracker):
     """Monitor and display progress updates."""
     while True:
@@ -600,36 +543,99 @@ from s3fetch.api import list_objects, download_objects
 from s3fetch.s3 import S3FetchQueue, create_download_config
 
 # Use custom boto3 session for credentials
-session = boto3.Session(profile_name="production")
-s3_client = session.client("s3", region_name="us-west-2")
+||||||| parent of e7cc5da (feat!: redesign public API with single download() entry point)
+def monitor_progress(tracker):
+    """Monitor and display progress updates."""
+    while True:
+        stats = tracker.get_stats()
+        print(f"\rFound: {stats['objects_found']} | "
+              f"Downloaded: {stats['objects_downloaded']} | "
+              f"Speed: {stats['download_speed_mbps']:.1f} MB/s", end="")
+        time.sleep(1)
 
-# Use custom client with s3fetch API functions
+# Create progress tracker
+tracker = ProgressTracker()
+
+# Start monitoring thread
+monitor_thread = threading.Thread(target=monitor_progress, args=(tracker,))
+monitor_thread.daemon = True
+monitor_thread.start()
+
+# Setup and start download
+s3_client = boto3.client("s3")
 download_queue = S3FetchQueue()
 completed_queue = S3FetchQueue()
 exit_event = threading.Event()
 
 list_objects(
     bucket="my-bucket",
-    prefix="data/",
+    prefix="large-dataset/",
     client=s3_client,
     download_queue=download_queue,
     delimiter="/",
     regex=None,
-    exit_event=exit_event
+    exit_event=exit_event,
+    progress_tracker=tracker
 )
 
 download_config = create_download_config()
 success_count, failed_downloads = download_objects(
     client=s3_client,
-    threads=10,
+    threads=20,
     download_queue=download_queue,
     completed_queue=completed_queue,
     exit_event=exit_event,
     bucket="my-bucket",
-    prefix="data/",
-    download_dir="./data",
+    prefix="large-dataset/",
+    download_dir="./downloads",
     delimiter="/",
-    download_config=download_config
+    download_config=download_config,
+    progress_tracker=tracker
+)
+
+print("\nDownload complete!")
+```
+
+The ProgressTracker provides these statistics:
+- `objects_found`: Number of objects discovered during listing
+- `objects_downloaded`: Number of objects successfully downloaded
+- `bytes_downloaded`: Total bytes downloaded
+- `elapsed_time`: Time elapsed since tracking started
+- `download_speed_mbps`: Current download speed in MB/s
+
+Note: The progress tracker is thread-safe and can be safely accessed from multiple threads.
+
+### Advanced Usage
+
+```python
+import boto3
+import threading
+from s3fetch.api import list_objects, download_objects
+from s3fetch.s3 import S3FetchQueue, create_download_config
+
+# Use custom boto3 session for credentials
+=======
+>>>>>>> e7cc5da (feat!: redesign public API with single download() entry point)
+session = boto3.Session(profile_name="production")
+client = session.client("s3", region_name="us-west-2")
+
+success_count, failures = download(
+    "s3://my-bucket/data/",
+    client=client,
+)
+```
+
+### Per-Object Completion Callback
+
+```python
+from s3fetch import download
+
+def on_object_complete(key: str) -> None:
+    print(f"Finished: {key}")
+
+success_count, failures = download(
+    "s3://my-bucket/data/",
+    on_complete=on_object_complete,
 )
 ```
 

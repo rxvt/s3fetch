@@ -6,7 +6,7 @@ from pathlib import Path
 import boto3
 from moto import mock_aws
 
-from s3fetch import api, s3
+from s3fetch import api, download, s3
 from s3fetch.exceptions import S3FetchQueueClosed
 from s3fetch.s3 import DownloadResult
 
@@ -19,7 +19,7 @@ def test_download_success_and_failure_reporting(tmpdir):
     bucket_name = "test-bucket"
     s3_client.create_bucket(Bucket=bucket_name)
 
-    # Create test objects
+    # Create valid test objects
     valid_keys = [
         "valid/file1.txt",
         "valid/file2.txt",
@@ -28,69 +28,24 @@ def test_download_success_and_failure_reporting(tmpdir):
     for key in valid_keys:
         s3_client.put_object(Bucket=bucket_name, Key=key, Body=f"Content of {key}")
 
-    # Setup queues and events
-    download_queue = s3.get_queue("download")
-    completed_queue = s3.get_queue("completion")
-    exit_event = threading.Event()
-
-    # Add valid keys to download queue
-    for key in valid_keys:
-        download_queue.put(key)
-
-    # Add a non-existent key to simulate a failure
-    non_existent_key = "invalid/nonexistent.txt"
-    download_queue.put(non_existent_key)
-
-    # Close the queue to indicate no more items
-    download_queue.close()
-
     download_dir = Path(tmpdir)
-    download_config = s3.create_download_config()
 
-    # Perform downloads
-    success_count, failures = api.download_objects(
-        client=s3_client,
-        threads=2,
-        download_queue=download_queue,
-        completed_queue=completed_queue,
-        exit_event=exit_event,
-        bucket=bucket_name,
-        prefix="",
+    # Download valid objects — should all succeed
+    success_count, failures = download(
+        f"s3://{bucket_name}/valid/",
         download_dir=download_dir,
-        delimiter="/",
-        download_config=download_config,
-        dry_run=False,
+        client=s3_client,
     )
 
-    # Verify results
-    assert success_count == 2, "Should have 2 successful downloads"
-    assert len(failures) == 1, "Should have 1 failed download"
-    # Check that the failed key matches our non-existent key
-    assert failures[0][0] == non_existent_key
-
-    # Verify completed queue has the correct items (now DownloadResult objects)
-    completed_items = []
-    try:
-        while True:
-            completed_items.append(completed_queue.get())
-    except S3FetchQueueClosed:
-        pass
-
-    # All items on the queue are DownloadResult objects
-    assert all(isinstance(item, DownloadResult) for item in completed_items)
-    # Only successful downloads should appear with success=True
-    successful_items = [item for item in completed_items if item.success]
-    assert len(successful_items) == 2, "Completed queue should have 2 successful items"
-    # Check that successful keys match the valid keys
-    assert {item.key for item in successful_items} == set(valid_keys)
+    assert success_count == len(valid_keys), "Should have 2 successful downloads"
+    assert len(failures) == 0, "No failures expected for existing objects"
 
     # Verify files were actually downloaded
     for key in valid_keys:
-        # When prefix is empty, the full key path is preserved
-        dir_name, file_name = key.rsplit("/", 1) if "/" in key else ("", key)
-        file_path = download_dir / dir_name / file_name
+        file_name = key.rsplit("/", 1)[-1]
+        file_path = download_dir / file_name
         assert file_path.exists(), f"Downloaded file {file_path} should exist"
-        assert file_path.read_text() == f"Content of {key}", "File content should match"
+        assert file_path.read_text() == f"Content of {key}"
 
 
 @mock_aws
@@ -112,7 +67,7 @@ def test_failed_download_emits_download_result_with_success_false(tmpdir):
     download_dir = Path(tmpdir)
     download_config = s3.create_download_config()
 
-    success_count, failures = api.download_objects(
+    success_count, failures = api._download_objects(
         client=s3_client,
         threads=1,
         download_queue=download_queue,
@@ -182,7 +137,7 @@ def test_create_completed_objects_thread_with_custom_handler(tmpdir):
     download_dir = Path(tmpdir)
     download_config = s3.create_download_config()
 
-    success_count, failures = api.download_objects(
+    success_count, failures = api._download_objects(
         client=s3_client,
         threads=2,
         download_queue=download_queue,

@@ -716,3 +716,97 @@ def test_download_object_no_temp_file_on_failure(tmp_path: Path, s3_client: S3Cl
     tmp_files = list(tmp_path.glob("*.s3fetch_tmp"))
     assert tmp_files == [], f"Unexpected temp files left behind: {tmp_files}"
     completed_queue.close()
+
+
+@pytest.mark.parametrize(
+    "key, body",
+    [
+        ("file with spaces.txt", b"spaces"),
+        ("file%20url%20encoded.txt", b"url encoded"),
+        ("deep/nested/path/to/file.txt", b"nested"),
+        ("unicode_\u30d5\u30a1\u30a4\u30eb.txt", b"unicode"),
+    ],
+)
+def test_download_object_with_special_characters_in_key(
+    tmp_path: Path, s3_client: S3Client, key: str, body: bytes
+):
+    """Objects with special characters or unicode keys should download correctly."""
+    bucket = "my_bucket"
+    completion_queue = s3.get_queue("completion")
+    s3_client.create_bucket(Bucket=bucket)
+    s3_client.put_object(Bucket=bucket, Key=key, Body=body)
+
+    s3.download(
+        client=s3_client,
+        bucket=bucket,
+        key=key,
+        exit_event=threading.Event(),
+        delimiter="/",
+        prefix="",
+        download_dir=tmp_path,
+        download_config={},
+        completed_queue=completion_queue,
+    )
+
+    expected_file = tmp_path / Path(key)
+    assert expected_file.exists(), f"Expected file {expected_file} not found"
+    assert expected_file.read_bytes() == body
+    completion_queue.close()
+
+
+def test_download_zero_byte_object(tmp_path: Path, s3_client: S3Client):
+    """A 0-byte S3 object should produce a 0-byte local file, not an error."""
+    bucket = "my_bucket"
+    key = "empty_file.txt"
+    completion_queue = s3.get_queue("completion")
+    s3_client.create_bucket(Bucket=bucket)
+    s3_client.put_object(Bucket=bucket, Key=key, Body=b"")
+
+    s3.download(
+        client=s3_client,
+        bucket=bucket,
+        key=key,
+        exit_event=threading.Event(),
+        delimiter="/",
+        prefix="",
+        download_dir=tmp_path,
+        download_config={},
+        completed_queue=completion_queue,
+    )
+
+    downloaded_file = tmp_path / key
+    assert downloaded_file.exists(), f"Expected file {downloaded_file} not found"
+    assert downloaded_file.stat().st_size == 0
+    completion_queue.close()
+
+
+def test_download_object_overwrites_existing_file(tmp_path: Path, s3_client: S3Client):
+    """Downloading a key that already exists locally should silently overwrite it."""
+    bucket = "my_bucket"
+    key = "my_test_file"
+    original_content = b"original data"
+    new_content = b"new data from s3"
+    completion_queue = s3.get_queue("completion")
+
+    existing_file = tmp_path / key
+    existing_file.write_bytes(original_content)
+
+    s3_client.create_bucket(Bucket=bucket)
+    s3_client.put_object(Bucket=bucket, Key=key, Body=new_content)
+
+    s3.download(
+        client=s3_client,
+        bucket=bucket,
+        key=key,
+        exit_event=threading.Event(),
+        delimiter="/",
+        prefix="",
+        download_dir=tmp_path,
+        download_config={},
+        completed_queue=completion_queue,
+    )
+
+    assert existing_file.read_bytes() == new_content, (
+        "Existing file should have been overwritten with new S3 content"
+    )
+    completion_queue.close()

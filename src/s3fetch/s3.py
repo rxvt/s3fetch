@@ -409,7 +409,7 @@ def shutdown_download_threads(executor: ThreadPoolExecutor) -> None:
     executor.shutdown(wait=False)
 
 
-def process_key(key: str, delimiter: str, prefix: str) -> Tuple[Optional[str], str]:
+def process_key(key: str, delimiter: str, prefix: str) -> Tuple[str, str]:
     """Process the object key.
 
     Rollup the object key to the nearest delimiter by the prefix and then split the
@@ -421,7 +421,7 @@ def process_key(key: str, delimiter: str, prefix: str) -> Tuple[Optional[str], s
         prefix (str): Object key prefix, .e.g. `my/test/objects/`.
 
     Returns:
-        Tuple[Optional[str], str]: Tuple containing the directory and file.
+        Tuple[str, str]: Tuple containing the directory and file.
     """
     tmp_key = rollup_object_key_by_prefix(key=key, delimiter=delimiter, prefix=prefix)
 
@@ -460,9 +460,7 @@ def rollup_object_key_by_prefix(prefix: str, delimiter: str, key: str) -> str:
     return tmp_key
 
 
-def split_object_key_into_dir_and_file(
-    key: str, delimiter: str
-) -> Tuple[Optional[str], str]:
+def split_object_key_into_dir_and_file(key: str, delimiter: str) -> Tuple[str, str]:
     """Split the object key into directory and file.
 
     Args:
@@ -471,7 +469,7 @@ def split_object_key_into_dir_and_file(
 
     Returns:
         tuple: Tuple containing the directory and file. If the delimiter is not found
-            in the object key then the directory will be None and
+            in the object key then the directory will be an empty string and
             the file will be the entire object key.
     """
     if delimiter not in key:

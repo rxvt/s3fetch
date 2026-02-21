@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI Validation**: Input validation for regex patterns, thread counts, and S3 URIs
 - **Error Handling**: Improved exception handling and user-facing error messages
 - **Logging**: Better logging configuration for both CLI and library usage
-- **Documentation**: Added CLAUDE.md for development guidance
+- **Documentation**: Added AGENTS.md for development guidance
 
 ### Changed
 
@@ -225,8 +225,9 @@ poetry run nox -s tests
 ```bash
 # Hatch testing
 hatch test -a
-hatch run test_unit
-hatch run test_integration
+hatch test tests/unit
+hatch test tests/integration
+hatch test tests/e2e
 ```
 
 ### CLI Usage

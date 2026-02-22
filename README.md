@@ -168,10 +168,16 @@ Options:
                                   actually downloading files.
   --delimiter TEXT                Object key delimiter for path structure.
                                   Defaults to '/'.
-  -q, --quiet                     Suppress all output except errors.
-  --progress [none|simple|detailed]
-                                  Show download progress. 'simple' shows basic
-                                  stats, 'detailed' shows real-time updates.
+  -q, --quiet                     Suppress all stdout; errors still go to
+                                  stderr. Mutually exclusive with --progress.
+  --progress [simple|detailed|live-update|fancy]
+                                  Progress display mode. 'simple' (default)
+                                  prints each object key as it downloads.
+                                  'detailed' adds a summary at the end.
+                                  'live-update' shows a real-time status line
+                                  and summary (no per-object output).
+                                  'fancy' shows a Rich progress bar and summary
+                                  (requires: pip install s3fetch[fancy]).
   --help                          Show this message and exit.
 ```
 

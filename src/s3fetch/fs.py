@@ -47,7 +47,7 @@ def create_destination_directory(
         # the download directory.
         resolved = absolute_directory.resolve()
         resolved_base = download_dir.resolve()
-        if not str(resolved).startswith(str(resolved_base)):
+        if not resolved.is_relative_to(resolved_base):
             raise PathTraversalError(
                 f"Object key '{object_dir}' resolves outside the download "
                 f"directory '{download_dir}'. Refusing to create '{resolved}'."

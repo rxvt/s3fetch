@@ -68,4 +68,4 @@ def test_safe_paths_do_not_raise(tmp_path, object_dir):
         delimiter="/",
     )
     assert result.is_dir()
-    assert str(result).startswith(str(tmp_path))
+    assert result.is_relative_to(tmp_path)

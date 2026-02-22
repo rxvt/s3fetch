@@ -316,11 +316,11 @@ def test_add_object_to_download_queue_without_progress_tracking():
 
 
 @mock_aws
-def test_api_download_objects_with_string_path(tmpdir):
-    """Test that download_objects API function accepts string paths."""
+def test_api_download_with_string_path(tmpdir):
+    """Test that download() accepts a string download_dir path."""
     import boto3
 
-    from s3fetch.api import download_objects
+    from s3fetch import download
 
     # Setup mock S3
     s3_client = boto3.client("s3", region_name="us-east-1")
@@ -330,29 +330,11 @@ def test_api_download_objects_with_string_path(tmpdir):
     # Create test object
     s3_client.put_object(Bucket=bucket_name, Key="test.txt", Body="test content")
 
-    # Setup queues
-    download_queue = S3FetchQueue()
-    completed_queue = S3FetchQueue()
-    exit_event = threading.Event()
-
-    # Add object to queue
-    download_queue.put("test.txt")
-    download_queue.close()
-
-    download_config = create_download_config()
-
     # Test with string path (not Path object)
-    success_count, failed_downloads = download_objects(
-        client=s3_client,
-        threads=1,
-        download_queue=download_queue,
-        completed_queue=completed_queue,
-        exit_event=exit_event,
-        bucket=bucket_name,
-        prefix="",
+    success_count, failed_downloads = download(
+        f"s3://{bucket_name}/",
         download_dir=str(tmpdir),  # Pass string instead of Path
-        delimiter="/",
-        download_config=download_config,
+        client=s3_client,
     )
 
     # Verify download worked

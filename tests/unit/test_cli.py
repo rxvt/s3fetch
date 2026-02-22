@@ -94,7 +94,8 @@ class TestValidateThreadCount:
         validate_thread_count(1)  # Minimum valid
         validate_thread_count(4)  # Typical value
         validate_thread_count(100)  # High but reasonable
-        validate_thread_count(1000)  # Maximum valid
+        validate_thread_count(1000)  # At the warning threshold
+        validate_thread_count(9999)  # Above threshold — warns but does not raise
 
     def test_none_thread_count(self):
         """Test that None thread count is allowed."""
@@ -114,13 +115,13 @@ class TestValidateThreadCount:
         assert "Thread count must be at least 1" in str(exc_info.value)
         assert "Got: -5" in str(exc_info.value)
 
-    def test_invalid_thread_count_too_high(self):
-        """Test that thread count over 1000 raises BadParameter."""
-        with pytest.raises(BadParameter) as exc_info:
-            validate_thread_count(1001)
-        assert "Thread count must be 1000 or less" in str(exc_info.value)
-        assert "Got: 1001" in str(exc_info.value)
-        assert "AWS rate limits" in str(exc_info.value)
+    def test_thread_count_too_high_prints_warning(self, capsys):
+        """Test that thread count over 1000 prints a warning to stderr but does not raise."""  # noqa: E501
+        validate_thread_count(1001)
+        captured = capsys.readouterr()
+        assert "Warning" in captured.err
+        assert "1001" in captured.err
+        assert "AWS rate limits" in captured.err
 
 
 class TestValidateAwsRegion:

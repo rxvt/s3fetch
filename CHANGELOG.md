@@ -5,41 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - 2025-09-27
+## [2.0.0] - Unreleased
 
 ### ⚠️ BREAKING CHANGES
 
 - **Python Requirements**: Minimum Python version increased from 3.7 to 3.10
+- **Public API**: Replaced multiple entry points with a single `download()` function
+- **CLI `--progress`**: Removed `none` mode; `simple` is now the default; added `live-update` and `fancy` modes
 - **Build System**: Migrated from Poetry to Hatch for dependency management
-- **Code Quality**: Major refactoring with strict type annotations and linting rules
-- **CLI Interface**: Some internal API changes may affect programmatic usage
 
 ### Added
 
-- **Development Environment**: Full Hatch integration with locked dependencies
+- **Public API**: New single `download()` entry point in `s3fetch.api` replacing the old multi-function API
+- **`on_complete` callback**: `download()` accepts an `on_complete` callable invoked with each object key as it completes
+- **`DownloadResult`**: Structured result object with `key`, `file_size`, `success`, and `error` fields emitted per download
+- **`ProgressProtocol`**: Protocol class for implementing custom progress trackers compatible with both CLI and library usage
+- **`--progress live-update`**: Real-time single-line status display (overwrites in place) with final summary; suppresses per-object output
+- **`--progress fancy`**: Rich-powered progress bar with transfer speed and elapsed time; requires `pip install s3fetch[fancy]`
+- **`s3fetch[fancy]` optional extra**: `rich>=13.0.0` installable as an optional dependency
+- **Python 3.14 support**: Added to test matrix and CI
+- **Atomic writes**: Downloads write to a temporary file first and rename on completion, preventing partial files on failure or interruption
+- **Path traversal protection**: Destination paths are validated against the download directory using `Path.is_relative_to()`
+- **Development Environment**: Full Hatch integration with locked dependencies via hatch-pip-compile
 - **Type Safety**: Comprehensive type annotations across all modules
-- **Code Quality**: Pre-commit hooks with Ruff, mypy, and formatting checks
-- **Testing**: Structured test organization (unit, integration, e2e)
-- **CLI Validation**: Input validation for regex patterns, thread counts, and S3 URIs
-- **Error Handling**: Improved exception handling and user-facing error messages
-- **Logging**: Better logging configuration for both CLI and library usage
-- **Documentation**: Added AGENTS.md for development guidance
+- **Code Quality**: Pre-commit hooks with Ruff, mypy, bandit, and formatting checks
+- **Testing**: Structured test organisation (unit, integration, e2e) with 160+ tests
+- **CLI Validation**: Input validation for regex patterns, thread counts, S3 URIs, and download directories
+- **Error Handling**: Actionable error messages with troubleshooting suggestions for common AWS errors
 
 ### Changed
 
+- **`--progress simple`**: Now the default mode; prints each object key as it downloads with no summary (previously `none` was the default)
+- **`--progress detailed`**: Prints per-object keys plus a final summary (previously tried and failed to show a live status line)
+- **`--quiet`**: Now explicitly mutually exclusive with `--progress`; suppresses all stdout but errors still go to stderr
+- **Thread count warning**: Now warns instead of erroring when thread count exceeds 1000
 - **Minimum Python Version**: Now requires Python 3.10 or higher
-- **Build System**: Migrated from Poetry to Hatch for dependency management
-- **Code Formatting**: Migrated from Black to Ruff for linting and formatting
-- **Type Annotations**: All functions now have proper type hints
+- **Build System**: Migrated from Poetry to Hatch
+- **Code Formatting**: Migrated from Black to Ruff
+- **Type Annotations**: All public functions now have complete type hints
 - **Error Messages**: More actionable and user-friendly error messages
-- **Testing Framework**: Organized tests into unit, integration, and e2e categories
 
 ### Fixed
 
+- **`--progress detailed` live line**: The `\r` overwrite line was broken when per-object output was active; fixed by moving the live display to `live-update` mode which correctly suppresses per-object output
 - **Logging Configuration**: Global logging setup no longer interferes with library usage
-- **Input Validation**: Added proper validation for CLI parameters and S3 URIs
-- **Documentation**: Fixed inconsistencies between README.md and pyproject.toml
-- **Thread Management**: Improved thread count validation and bounds checking
+- **Path traversal**: Fixed vulnerability where crafted S3 keys could write files outside the download directory
+- **Disk-full errors**: `OSError` during download now gives a clear error message instead of an unhandled exception
 
 ### Deprecated
 
@@ -232,15 +243,40 @@ hatch test tests/e2e
 
 ### CLI Usage
 
-The CLI interface remains the same for end users:
+The core CLI usage is unchanged:
 ```bash
-s3fetch s3://bucket/prefix/ /local/path/
+s3fetch s3://bucket/prefix/ --download-dir /local/path/
 ```
+
+The `--progress` option has new modes. The default is now `simple` (prints each
+object key). Use `--progress detailed` for a final summary, `--progress live-update`
+for a real-time status line, or `--progress fancy` for a Rich progress bar
+(requires `pip install s3fetch[fancy]`).
 
 ### Library Usage
 
-Public API functions remain compatible, but internal imports may have changed:
+The public API has been simplified to a single entry point:
+
 ```python
-# Still works in v2.0
-from s3fetch.api import download_objects
+# v1.x — multiple entry points (no longer available)
+# from s3fetch.api import download_objects, list_objects
+
+# v2.0 — single download() function
+from s3fetch import download
+
+success_count, failures = download("s3://my-bucket/prefix/")
+```
+
+Per-object callbacks replace the old completed-objects queue approach:
+
+```python
+from s3fetch import download
+
+def on_done(key: str) -> None:
+    print(f"Downloaded: {key}")
+
+success_count, failures = download(
+    "s3://my-bucket/prefix/",
+    on_complete=on_done,
+)
 ```

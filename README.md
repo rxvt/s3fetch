@@ -308,177 +308,6 @@ Pass a pre-built boto3 client to use a custom session, role, or region:
 import boto3
 from s3fetch import download
 
-### Download Callbacks
-
-Every download attempt — success or failure — places a `DownloadResult` on the
-completed queue.  By supplying your own handler to
-`create_completed_objects_thread` you get real-time, per-object notifications
-with rich context, enabling use cases such as:
-
-- Driving a [Rich](https://rich.readthedocs.io/en/stable/progress.html) progress bar
-- Pipelining downloads directly into a compression stream (e.g. adding each
-  file to a tarball as soon as it lands, without waiting for the full download
-  to finish)
-- Ops reporting / audit logging
-
-`DownloadResult` fields:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `key` | `str` | S3 object key |
-| `dest_filename` | `Path` | Absolute local destination path |
-| `success` | `bool` | `True` on success, `False` on failure |
-| `file_size` | `int` | Bytes written (0 on failure or dry-run) |
-| `error` | `Exception \| None` | Exception that caused the failure, or `None` |
-
-#### Basic example — print every result
-
-```python
-import boto3
-import threading
-from s3fetch.api import create_completed_objects_thread, download_objects, list_objects
-from s3fetch.exceptions import S3FetchQueueClosed
-from s3fetch.s3 import DownloadResult, S3FetchQueue, create_download_config
-
-def my_handler(queue: S3FetchQueue) -> None:
-    while True:
-        try:
-            result: DownloadResult = queue.get(block=True)
-            status = "ok" if result.success else f"FAILED: {result.error}"
-            print(f"{result.key} ({result.file_size} bytes) — {status}")
-        except S3FetchQueueClosed:
-            break
-
-s3_client = boto3.client("s3")
-download_queue: S3FetchQueue[str] = S3FetchQueue()
-completed_queue: S3FetchQueue[DownloadResult] = S3FetchQueue()
-exit_event = threading.Event()
-
-list_objects(
-    bucket="my-bucket",
-    prefix="exports/2024/",
-    client=s3_client,
-    download_queue=download_queue,
-    delimiter="/",
-    regex=None,
-    exit_event=exit_event,
-)
-
-# Start your custom handler *before* downloading
-create_completed_objects_thread(queue=completed_queue, func=my_handler)
-
-download_config = create_download_config()
-success_count, failed_downloads = download_objects(
-    client=s3_client,
-    threads=10,
-    download_queue=download_queue,
-    completed_queue=completed_queue,
-    exit_event=exit_event,
-    bucket="my-bucket",
-    prefix="exports/2024/",
-    download_dir="./downloads",
-    delimiter="/",
-    download_config=download_config,
-)
-```
-
-#### Pipeline example — compress as files arrive
-
-This pattern lets you add each downloaded file to a tar archive concurrently
-with ongoing downloads, rather than waiting for all downloads to finish first:
-
-```python
-import queue
-import tarfile
-import threading
-from pathlib import Path
-
-import boto3
-from s3fetch.api import create_completed_objects_thread, download_objects, list_objects
-from s3fetch.exceptions import S3FetchQueueClosed
-from s3fetch.s3 import DownloadResult, S3FetchQueue, create_download_config
-
-# A small work queue between the download handler and the tar thread
-tar_queue: queue.Queue = queue.Queue()
-
-def on_download(queue: S3FetchQueue) -> None:
-    """Forward successful downloads to the tar work queue."""
-    while True:
-        try:
-            result: DownloadResult = queue.get(block=True)
-            if result.success:
-                tar_queue.put(result.dest_filename)
-        except S3FetchQueueClosed:
-            tar_queue.put(None)  # sentinel
-            break
-
-def tar_worker(archive_path: Path) -> None:
-    """Compress files as they arrive from the download handler."""
-    with tarfile.open(archive_path, "w:gz") as tar:
-        while True:
-            path = tar_queue.get()
-            if path is None:
-                break
-            tar.add(path, arcname=path.name)
-            print(f"Compressed {path.name}")
-
-# Start the compression thread
-archive = Path("output.tar.gz")
-threading.Thread(target=tar_worker, args=(archive,), daemon=True).start()
-
-# Run the download
-s3_client = boto3.client("s3")
-download_queue: S3FetchQueue[str] = S3FetchQueue()
-completed_queue: S3FetchQueue[DownloadResult] = S3FetchQueue()
-exit_event = threading.Event()
-
-list_objects(
-    bucket="my-bucket",
-    prefix="data/",
-    client=s3_client,
-    download_queue=download_queue,
-    delimiter="/",
-    regex=None,
-    exit_event=exit_event,
-)
-
-create_completed_objects_thread(queue=completed_queue, func=on_download)
-
-download_config = create_download_config()
-download_objects(
-    client=s3_client,
-    threads=20,
-    download_queue=download_queue,
-    completed_queue=completed_queue,
-    exit_event=exit_event,
-    bucket="my-bucket",
-    prefix="data/",
-    download_dir="./downloads",
-    delimiter="/",
-    download_config=download_config,
-)
-```
-
-#### Custom progress tracker
-
-You can also implement the `ProgressProtocol` to receive aggregate counts
-during listing and downloading without needing the completed queue at all:
-
-```python
-from s3fetch import ProgressProtocol
-
-class MyTracker:
-    """Minimal tracker that satisfies ProgressProtocol."""
-
-    def increment_found(self) -> None:
-        print(".", end="", flush=True)  # one dot per object listed
-
-    def increment_downloaded(self, bytes_count: int) -> None:
-        print(f" +{bytes_count // 1024}KB", end="", flush=True)
-
-# Pass to list_objects and download_objects via progress_tracker=MyTracker()
-```
-
 session = boto3.Session(profile_name="production")
 client = session.client("s3", region_name="us-west-2")
 
@@ -488,7 +317,10 @@ success_count, failures = download(
 )
 ```
 
-### Per-Object Completion Callback
+### Download Callbacks
+
+Use the `on_complete` parameter to receive a callback for each successfully
+downloaded object:
 
 ```python
 from s3fetch import download
@@ -499,6 +331,40 @@ def on_object_complete(key: str) -> None:
 success_count, failures = download(
     "s3://my-bucket/data/",
     on_complete=on_object_complete,
+)
+```
+
+`DownloadResult` fields (available when using `create_completed_objects_thread`
+for lower-level access):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `key` | `str` | S3 object key |
+| `dest_filename` | `Path` | Absolute local destination path |
+| `success` | `bool` | `True` on success, `False` on failure |
+| `file_size` | `int` | Bytes written (0 on failure or dry-run) |
+| `error` | `Exception \| None` | Exception that caused the failure, or `None` |
+
+### Custom Progress Tracker
+
+Implement `ProgressProtocol` to receive aggregate counts during listing and
+downloading:
+
+```python
+from s3fetch import download, ProgressProtocol
+
+class MyTracker:
+    """Minimal tracker that satisfies ProgressProtocol."""
+
+    def increment_found(self) -> None:
+        print(".", end="", flush=True)  # one dot per object listed
+
+    def increment_downloaded(self, bytes_count: int) -> None:
+        print(f" +{bytes_count // 1024}KB", end="", flush=True)
+
+success_count, failures = download(
+    "s3://my-bucket/data/",
+    progress_tracker=MyTracker(),
 )
 ```
 

@@ -56,7 +56,7 @@ s3fetch is a multi-threaded S3 download tool with these core components:
 - Standard boto3 AWS credentials support
 - Atomic downloads
 - Path traversal protection
-- Per-object completion callbacks via `create_completed_objects_thread` and `DownloadResult`
+- Per-object completion callbacks
 
 ## CICD
 

@@ -89,7 +89,7 @@ Timed out while listing objects after 60min.
 - Python >= 3.10
 - AWS credentials in one of the [standard locations](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-where)
 
-S3Fetch is available on PyPi and can be installed via one of the following methods.
+S3Fetch is available on PyPI and can be installed via one of the following methods.
 
 ### uv (recommended)
 
@@ -103,7 +103,7 @@ Ensure you have [uv](https://docs.astral.sh/uv/) installed, then:
 
 ### Development Installation
 
-For development work on s3fetch:
+For development work on S3Fetch:
 
 1. Clone the repository:
    ```bash
@@ -116,17 +116,17 @@ For development work on s3fetch:
    uv tool install hatch --with hatch-pip-compile
    ```
 
-3. Set up the development environment using hatch:
+3. Set up the development environment using Hatch:
    ```bash
    hatch env create
    ```
 
-4. Run s3fetch from source:
+4. Run S3Fetch from source:
    ```bash
    hatch run s3fetch --help
    ```
 
-5. (Optional) Populate a test S3 bucket with test data for development:
+5. (Optional) Populate a test S3 bucket with data for development:
    ```bash
    # First create your own test bucket (use a unique name!)
    aws s3 mb s3://your-unique-s3fetch-test-bucket-name --region us-east-1
@@ -271,10 +271,10 @@ When using S3Fetch as a library, you can configure its logging behavior:
 ```python
 import logging
 
-# Option 1: Reduce s3fetch output
+# Option 1: Reduce S3Fetch output
 logging.getLogger("s3fetch").setLevel(logging.WARNING)
 
-# Option 2: Disable s3fetch logging completely
+# Option 2: Disable S3Fetch logging completely
 logging.getLogger("s3fetch").disabled = True
 ```
 
@@ -372,7 +372,7 @@ success_count, failures = download(
 
 ### Existing files are silently overwritten
 
-s3fetch does not check whether a file already exists before downloading. If you run s3fetch
+S3Fetch does not check whether a file already exists before downloading. If you run S3Fetch
 twice against the same download directory, existing files will be silently overwritten with
 the latest version from S3.
 

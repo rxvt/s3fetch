@@ -87,6 +87,7 @@ def download(
     exit_event = utils.create_exit_event()
     download_config = s3.create_download_config(callback=None)
 
+    on_complete_thread: Optional[threading.Thread] = None
     if on_complete is not None:
 
         def _on_complete_consumer(queue: S3FetchQueue[DownloadResult]) -> None:
@@ -100,7 +101,7 @@ def download(
                 except S3FetchQueueClosed:
                     break
 
-        _create_completed_objects_thread(
+        on_complete_thread = _create_completed_objects_thread(
             queue=completed_queue,
             func=_on_complete_consumer,
         )
@@ -116,7 +117,7 @@ def download(
         progress_tracker=progress_tracker,
     )
 
-    return _download_objects(
+    result = _download_objects(
         client=client,
         threads=threads,
         download_queue=download_queue,
@@ -130,6 +131,11 @@ def download(
         dry_run=dry_run,
         progress_tracker=progress_tracker,
     )
+
+    if on_complete_thread is not None:
+        on_complete_thread.join()
+
+    return result
 
 
 def _list_objects(
@@ -233,7 +239,7 @@ def create_completed_objects_thread(
     queue: "S3FetchQueue[DownloadResult]",
     func: Callable[..., None],
     **kwargs: Dict[str, Any],
-) -> None:
+) -> threading.Thread:
     """Create a thread to consume completed download results.
 
     The ``func`` is called in a new daemon thread with the ``queue`` as its
@@ -256,9 +262,12 @@ def create_completed_objects_thread(
         func (Callable[..., None]): Function to run in a new thread. Will receive
             the completed objects queue and any additional kwargs passed.
         **kwargs: Any additional arguments to pass to ``func``.
+
+    Returns:
+        threading.Thread: The started consumer thread.
     """
     logger.debug("Creating completed objects thread")
-    threading.Thread(
+    thread = threading.Thread(
         name="completed_objects",
         target=func,
         kwargs={
@@ -266,7 +275,9 @@ def create_completed_objects_thread(
             **kwargs,
         },
         daemon=True,
-    ).start()
+    )
+    thread.start()
+    return thread
 
 
 # Internal alias used by cli.py

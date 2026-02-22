@@ -190,7 +190,7 @@ def test_progress_tracking_simple(test_bucket, tmp_path):
     assert result.exit_code == 0, f"Command failed with output: {result.output}"
 
     # simple mode prints each object key as it downloads
-    assert "image_000.jpg" in result.output
+    assert "sequences/image_000.jpg" in result.output
 
     # simple mode does NOT print a summary
     assert "Objects found:" not in result.output

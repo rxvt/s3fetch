@@ -49,6 +49,41 @@ Resources:
             AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 1
 
+  BenchmarkInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: S3FetchBenchmarkInstanceRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: S3FetchTestBucketReadAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !GetAtt S3FetchTestBucket.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource: !Sub "${S3FetchTestBucket.Arn}/*"
+
+  BenchmarkInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: S3FetchBenchmarkInstanceProfile
+      Roles:
+        - !Ref BenchmarkInstanceRole
+
 Outputs:
   BucketName:
     Description: "Name of the S3 bucket"
@@ -67,3 +102,9 @@ Outputs:
     Value: !GetAtt S3FetchGitHubActionsRole.Arn
     Export:
       Name: !Sub "${AWS::StackName}-GitHubActionsRoleArn"
+
+  BenchmarkInstanceProfileName:
+    Description: "EC2 instance profile name for benchmark instances (use with SSM Session Manager)"
+    Value: !Ref BenchmarkInstanceProfile
+    Export:
+      Name: !Sub "${AWS::StackName}-BenchmarkInstanceProfileName"

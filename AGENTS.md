@@ -49,11 +49,14 @@ s3fetch is a multi-threaded S3 download tool with these core components:
 
 ### Key Features
 
-- Concurrent downloads with configurable thread count
+- Concurrent downloads with configurable thread count (minimum 1; warns above 1000 but does not enforce an upper limit)
 - Regex filtering of objects without full bucket listing
 - Dry-run mode for testing
 - Custom output formatting and progress indication
 - Standard boto3 AWS credentials support
+- Atomic downloads: files are written to a `.s3fetch_tmp` temp file and renamed on completion, preventing partial files
+- Path traversal protection: S3 keys containing `..` that would escape the download directory are rejected with `PathTraversalError` (uses `Path.is_relative_to()`)
+- Per-object completion callbacks via `create_completed_objects_thread` and `DownloadResult`
 
 ## CICD
 

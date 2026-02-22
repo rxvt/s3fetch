@@ -157,12 +157,13 @@ Options:
                                   east-1, eu-west-1). Defaults to 'us-east-1'.
   -d, --debug                     Enable verbose debug output.
   --download-dir PATH             Local directory to save downloaded files.
-                                  Creates if missing. Defaults to current
+                                  Must already exist. Defaults to current
                                   directory.
   -r, --regex TEXT                Filter objects using regular expressions
                                   (e.g., '.*\.jpg$' for JPEG files).
   -t, --threads INTEGER           Number of concurrent download threads
-                                  (1-1000). Defaults to CPU core count.
+                                  (minimum 1, warns above 1000). Defaults to
+                                  CPU core count.
   --dry-run, --list-only          Show what would be downloaded without
                                   actually downloading files.
   --delimiter TEXT                Object key delimiter for path structure.
@@ -300,68 +301,6 @@ Pass a pre-built boto3 client to use a custom session, role, or region:
 ```python
 import boto3
 from s3fetch import download
-
-<<<<<<< HEAD
-def monitor_progress(tracker):
-    """Monitor and display progress updates."""
-    while True:
-        stats = tracker.get_stats()
-        print(f"\rFound: {stats['objects_found']} | "
-              f"Downloaded: {stats['objects_downloaded']} | "
-              f"Speed: {stats['download_speed_mbps']:.1f} MB/s", end="")
-        time.sleep(1)
-
-# Create progress tracker
-tracker = ProgressTracker()
-
-# Start monitoring thread
-monitor_thread = threading.Thread(target=monitor_progress, args=(tracker,))
-monitor_thread.daemon = True
-monitor_thread.start()
-
-# Setup and start download
-s3_client = boto3.client("s3")
-download_queue = S3FetchQueue()
-completed_queue = S3FetchQueue()
-exit_event = threading.Event()
-
-list_objects(
-    bucket="my-bucket",
-    prefix="large-dataset/",
-    client=s3_client,
-    download_queue=download_queue,
-    delimiter="/",
-    regex=None,
-    exit_event=exit_event,
-    progress_tracker=tracker
-)
-
-download_config = create_download_config()
-success_count, failed_downloads = download_objects(
-    client=s3_client,
-    threads=20,
-    download_queue=download_queue,
-    completed_queue=completed_queue,
-    exit_event=exit_event,
-    bucket="my-bucket",
-    prefix="large-dataset/",
-    download_dir="./downloads",
-    delimiter="/",
-    download_config=download_config,
-    progress_tracker=tracker
-)
-
-print("\nDownload complete!")
-```
-
-The ProgressTracker provides these statistics:
-- `objects_found`: Number of objects discovered during listing
-- `objects_downloaded`: Number of objects successfully downloaded
-- `bytes_downloaded`: Total bytes downloaded
-- `elapsed_time`: Time elapsed since tracking started
-- `download_speed_mbps`: Current download speed in MB/s
-
-Note: The progress tracker is thread-safe and can be safely accessed from multiple threads.
 
 ### Download Callbacks
 
@@ -534,88 +473,6 @@ class MyTracker:
 # Pass to list_objects and download_objects via progress_tracker=MyTracker()
 ```
 
-### Advanced Usage
-
-```python
-import boto3
-import threading
-from s3fetch.api import list_objects, download_objects
-from s3fetch.s3 import S3FetchQueue, create_download_config
-
-# Use custom boto3 session for credentials
-||||||| parent of e7cc5da (feat!: redesign public API with single download() entry point)
-def monitor_progress(tracker):
-    """Monitor and display progress updates."""
-    while True:
-        stats = tracker.get_stats()
-        print(f"\rFound: {stats['objects_found']} | "
-              f"Downloaded: {stats['objects_downloaded']} | "
-              f"Speed: {stats['download_speed_mbps']:.1f} MB/s", end="")
-        time.sleep(1)
-
-# Create progress tracker
-tracker = ProgressTracker()
-
-# Start monitoring thread
-monitor_thread = threading.Thread(target=monitor_progress, args=(tracker,))
-monitor_thread.daemon = True
-monitor_thread.start()
-
-# Setup and start download
-s3_client = boto3.client("s3")
-download_queue = S3FetchQueue()
-completed_queue = S3FetchQueue()
-exit_event = threading.Event()
-
-list_objects(
-    bucket="my-bucket",
-    prefix="large-dataset/",
-    client=s3_client,
-    download_queue=download_queue,
-    delimiter="/",
-    regex=None,
-    exit_event=exit_event,
-    progress_tracker=tracker
-)
-
-download_config = create_download_config()
-success_count, failed_downloads = download_objects(
-    client=s3_client,
-    threads=20,
-    download_queue=download_queue,
-    completed_queue=completed_queue,
-    exit_event=exit_event,
-    bucket="my-bucket",
-    prefix="large-dataset/",
-    download_dir="./downloads",
-    delimiter="/",
-    download_config=download_config,
-    progress_tracker=tracker
-)
-
-print("\nDownload complete!")
-```
-
-The ProgressTracker provides these statistics:
-- `objects_found`: Number of objects discovered during listing
-- `objects_downloaded`: Number of objects successfully downloaded
-- `bytes_downloaded`: Total bytes downloaded
-- `elapsed_time`: Time elapsed since tracking started
-- `download_speed_mbps`: Current download speed in MB/s
-
-Note: The progress tracker is thread-safe and can be safely accessed from multiple threads.
-
-### Advanced Usage
-
-```python
-import boto3
-import threading
-from s3fetch.api import list_objects, download_objects
-from s3fetch.s3 import S3FetchQueue, create_download_config
-
-# Use custom boto3 session for credentials
-=======
->>>>>>> e7cc5da (feat!: redesign public API with single download() entry point)
 session = boto3.Session(profile_name="production")
 client = session.client("s3", region_name="us-west-2")
 

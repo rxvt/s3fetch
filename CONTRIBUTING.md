@@ -13,55 +13,70 @@
 
 ## Setup development environment using Hatch
 
-1. Clone the repository
-1. Install the dependencies.
-
-    S3Fetch uses Hatch to manage dependencies, but we also provide a standard Requirements file that's automatically kept in sync - see below.
-
-    To install your environment using Hatch and open a shell in it, run the following command:
+1. Clone the repository.
+1. Install [hatch](https://hatch.pypa.io/) using [uv](https://docs.astral.sh/uv/):
 
     ```bash
-    $ hatch shell
+    uv tool install hatch --with hatch-pip-compile
     ```
 
-    Make sure to activate the environment and/or specify it as the default environment in your IDE.
-
-## Setup development environment using pip
-
-This is an alternative (more manual) way to setup your development environment using pip. The basics are covered, but not in any great detail (the expectation is you know your way around your prefered environment and tools).
-
-1. Create a virtualenv.
-1. Activate your virtualenv.
-1. Install the dependencies using pip:
+1. Create the development environment:
 
     ```bash
-    $ python -m pip install -r requirements/requirements-dev.txt
+    hatch env create
     ```
 
-# Install pre-commit hooks
+    This installs all dev and test dependencies and sets up pre-commit hooks automatically.
 
-Inside your virtual environment, run the following command:
+1. Run s3fetch from source to verify the setup:
 
-```
-$ pre-commit install
-```
+    ```bash
+    hatch run s3fetch --help
+    ```
 
-# Running tests via Hatch
+## Running tests
 
-Run tests in default testing env.
-
-```bash
-$ hatch test
-```
-
-Run tests across all testing environments.
+Run unit tests:
 
 ```bash
-$ hatch test -a
+just test-unit
 ```
 
-Run coverage report.
+Run integration tests:
 
 ```bash
-$ hatch test --cover
+just test-integration
+```
+
+Run all tests across all supported Python versions:
+
+```bash
+just test -a
+```
+
+Run a single test:
+
+```bash
+just test tests/unit/test_cli.py::TestValidateThreadCount
+```
+
+## Linting and formatting
+
+```bash
+just lint
+just format
+```
+
+Or run all quality checks at once:
+
+```bash
+just check
+```
+
+## Pre-commit hooks
+
+Pre-commit hooks are installed automatically when you run `hatch env create`. To install them manually:
+
+```bash
+pre-commit install
 ```

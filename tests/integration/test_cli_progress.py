@@ -109,6 +109,33 @@ def test_cli_progress_live_update_no_per_object_output():
 
 
 @mock_aws
+def test_cli_progress_fancy_with_rich_installed():
+    """--progress fancy runs successfully and shows a summary when rich is installed."""
+    _setup_bucket("test-bucket", ["file1.txt", "file2.txt"])
+
+    runner = CliRunner()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        result = runner.invoke(
+            cli,
+            [
+                "s3://test-bucket/",
+                "--download-dir",
+                tmpdir,
+                "--progress",
+                "fancy",
+            ],
+        )
+
+    assert result.exit_code == 0, f"Command failed with output: {result.output}"
+    # Per-object keys should NOT appear
+    assert "file1.txt" not in result.output
+    assert "file2.txt" not in result.output
+    # Summary should appear
+    assert "Progress Summary:" in result.output
+    assert "Objects downloaded: 2" in result.output
+
+
+@mock_aws
 def test_cli_progress_fancy_missing_rich_shows_install_hint():
     """--progress fancy without rich installed shows a helpful error."""
     _setup_bucket("test-bucket", ["file1.txt"])

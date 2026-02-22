@@ -12,6 +12,93 @@ from s3fetch.s3 import DownloadResult
 
 
 @mock_aws
+def test_download_on_complete_callback(tmpdir):
+    """on_complete callback is invoked once per successfully downloaded object."""
+    s3_client = boto3.client("s3", region_name="us-east-1")
+    bucket_name = "test-bucket"
+    s3_client.create_bucket(Bucket=bucket_name)
+
+    keys = ["data/file1.txt", "data/file2.txt", "data/file3.txt"]
+    for key in keys:
+        s3_client.put_object(Bucket=bucket_name, Key=key, Body=f"body of {key}")
+
+    completed_keys: list[str] = []
+
+    def on_done(key: str) -> None:
+        completed_keys.append(key)
+
+    success_count, failures = download(
+        f"s3://{bucket_name}/data/",
+        download_dir=str(tmpdir),
+        client=s3_client,
+        on_complete=on_done,
+    )
+
+    assert success_count == 3
+    assert failures == []
+    assert sorted(completed_keys) == sorted(keys)
+
+
+@mock_aws
+def test_download_on_complete_not_called_on_failure(tmpdir):
+    """on_complete callback is NOT called for objects that fail to download."""
+    s3_client = boto3.client("s3", region_name="us-east-1")
+    bucket_name = "test-bucket"
+    s3_client.create_bucket(Bucket=bucket_name)
+
+    # Put one valid object; the second key won't exist
+    s3_client.put_object(Bucket=bucket_name, Key="good.txt", Body="ok")
+
+    completed_keys: list[str] = []
+
+    # Manually drive the internals so we can inject a bad key alongside a good one
+    download_queue = s3.get_queue("download")
+    completed_queue: s3.S3FetchQueue[DownloadResult] = s3.S3FetchQueue()
+    exit_event = threading.Event()
+
+    download_queue.put("good.txt")
+    download_queue.put("missing.txt")
+    download_queue.close()
+
+    def on_done(key: str) -> None:
+        completed_keys.append(key)
+
+    def _consumer(queue: s3.S3FetchQueue[DownloadResult]) -> None:
+        from s3fetch.exceptions import S3FetchQueueClosed as Closed
+
+        while True:
+            try:
+                result = queue.get(block=True)
+                if result.success:
+                    on_done(result.key)
+            except Closed:
+                break
+
+    api.create_completed_objects_thread(queue=completed_queue, func=_consumer)
+
+    success_count, failures = api._download_objects(
+        client=s3_client,
+        threads=1,
+        download_queue=download_queue,
+        completed_queue=completed_queue,
+        exit_event=exit_event,
+        bucket=bucket_name,
+        prefix="",
+        download_dir=Path(tmpdir),
+        delimiter="/",
+        download_config=s3.create_download_config(),
+    )
+
+    import time
+
+    time.sleep(0.1)
+
+    assert success_count == 1
+    assert len(failures) == 1
+    assert completed_keys == ["good.txt"]
+
+
+@mock_aws
 def test_download_success_and_failure_reporting(tmpdir):
     """Test that successful and failed downloads are correctly reported."""
     # Setup mock S3

@@ -38,6 +38,7 @@ dependencies = [
   "pre-commit~=4.1.0",
   "mypy",
   "ruff~=0.13.1",
+  "rich>=13.0.0",
 ]
 
 post-install-commands = ["hatch run pre-commit install"]

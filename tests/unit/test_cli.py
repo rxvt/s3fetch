@@ -225,3 +225,29 @@ class TestCLIValidationIntegration:
         )
         assert result.exit_code == 2
         assert "Download directory does not exist" in result.output
+
+    def test_cli_invalid_progress_option(self):
+        """Test that CLI with invalid --progress value shows proper error."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["s3://test-bucket", "--progress", "none"])
+        assert result.exit_code == 2
+        assert "Invalid value for '--progress'" in result.output
+
+    def test_cli_quiet_and_progress_mutually_exclusive(self):
+        """Test that --quiet and --progress together raise a UsageError."""
+        runner = CliRunner()
+        result = runner.invoke(
+            cli, ["s3://test-bucket", "--quiet", "--progress", "detailed"]
+        )
+        assert result.exit_code != 0
+        assert "mutually exclusive" in result.output
+
+    def test_cli_valid_progress_choices(self):
+        """Test that all valid --progress choices are accepted by Click."""
+        runner = CliRunner()
+        for choice in ("simple", "detailed", "live-update", "fancy"):
+            # Invoke with a bad URI so it fails fast after option parsing —
+            # we just want to confirm the choice itself is accepted (exit 2
+            # would mean a Click option error, not a URI error).
+            result = runner.invoke(cli, ["invalid-uri", "--progress", choice])
+            assert "Invalid value for '--progress'" not in result.output

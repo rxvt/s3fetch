@@ -1,5 +1,6 @@
 """Command line interface for S3Fetch."""
 
+import importlib.util
 import logging
 import re
 import sys
@@ -195,9 +196,18 @@ def validate_download_directory(download_dir: Optional[Path]) -> None:
 @click.option("-q", "--quiet", is_flag=True, help="Suppress all output except errors.")
 @click.option(
     "--progress",
-    type=click.Choice(["none", "simple", "detailed"], case_sensitive=False),
-    default="none",
-    help="Show download progress. 'simple' shows basic stats, 'detailed' shows real-time updates.",  # noqa: E501
+    type=click.Choice(
+        ["simple", "detailed", "live-update", "fancy"], case_sensitive=False
+    ),
+    default=None,
+    help=(
+        "Progress display mode. 'simple' (default) prints each object key as it "
+        "downloads. 'detailed' adds a summary at the end. "
+        "'live-update' shows a real-time status line and summary "
+        "(no per-object output). "
+        "'fancy' shows a Rich progress bar and summary "
+        "(requires: pip install s3fetch[fancy])."
+    ),
 )
 def cli(
     s3_uri: str,
@@ -306,31 +316,87 @@ def create_client_and_queues(
 def start_progress_monitoring(
     progress_tracker: ProgressTracker, exit_event: threading.Event
 ) -> threading.Thread:
-    """Start a background thread to monitor and display progress updates.
+    r"""Start a background thread that overwrites a single status line every 2 seconds.
+
+    Used by ``--progress live-update``. Per-object output must be suppressed by the
+    caller so the ``\r`` overwrite is not disrupted by other prints.
 
     Args:
-        progress_tracker: The ProgressTracker instance to monitor
-        exit_event: Event to signal when to stop monitoring
+        progress_tracker: The ProgressTracker instance to monitor.
+        exit_event: Event to signal when to stop monitoring.
 
     Returns:
-        The monitoring thread
+        The monitoring thread.
     """
 
     def monitor_progress() -> None:
-        """Monitor progress and print periodic updates."""
+        """Overwrite a single status line with current progress every 2 seconds."""
         while not exit_event.is_set():
             stats = progress_tracker.get_stats()
-            # Clear the line and print progress update using enhanced custom_print
-            print(
+            sys.stdout.write(
                 f"\r[Found: {stats['objects_found']} | "
                 f"Downloaded: {stats['objects_downloaded']} | "
-                f"Speed: {stats['download_speed_mbps']:.1f} MB/s]",
-                False,
-                end="",
+                f"Speed: {stats['download_speed_mbps']:.1f} MB/s]"
             )
-            time.sleep(2)  # Update every 2 seconds
+            sys.stdout.flush()
+            time.sleep(2)
 
     progress_thread = threading.Thread(target=monitor_progress, daemon=True)
+    progress_thread.start()
+    return progress_thread
+
+
+def start_fancy_progress(
+    progress_tracker: ProgressTracker, exit_event: threading.Event
+) -> threading.Thread:
+    """Start a Rich progress bar in a background thread.
+
+    Used by ``--progress fancy``. Requires the ``rich`` package
+    (``pip install s3fetch[fancy]``).  The caller is responsible for verifying
+    that ``rich`` is importable before calling this function.
+
+    Args:
+        progress_tracker: The ProgressTracker instance to monitor.
+        exit_event: Event to signal when to stop monitoring.
+
+    Returns:
+        The monitoring thread.
+    """
+    from rich.progress import (  # type: ignore[import]
+        BarColumn,
+        Progress,
+        SpinnerColumn,
+        TaskProgressColumn,
+        TextColumn,
+        TimeElapsedColumn,
+        TransferSpeedColumn,
+    )
+
+    def run_fancy() -> None:
+        """Drive a Rich Progress display from progress_tracker stats."""
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TransferSpeedColumn(),
+            TimeElapsedColumn(),
+        ) as rich_progress:
+            task = rich_progress.add_task("Downloading...", total=None)
+            while not exit_event.is_set():
+                stats = progress_tracker.get_stats()
+                rich_progress.update(
+                    task,
+                    completed=stats["objects_downloaded"],
+                    total=stats["objects_found"] or None,
+                    description=(
+                        f"Downloading... "
+                        f"[{stats['objects_downloaded']}/{stats['objects_found']}]"
+                    ),
+                )
+                time.sleep(0.5)
+
+    progress_thread = threading.Thread(target=run_fancy, daemon=True)
     progress_thread.start()
     return progress_thread
 
@@ -444,7 +510,7 @@ def run_cli(  # noqa: C901
     dry_run: bool,
     delimiter: str,
     quiet: bool,
-    progress: str,
+    progress: Optional[str],
 ) -> None:
     """Run the main S3Fetch CLI logic.
 
@@ -457,9 +523,25 @@ def run_cli(  # noqa: C901
         threads (int): Number of threads to use for downloading.
         dry_run (bool): If True, only list objects without downloading.
         delimiter (str): Delimiter for S3 object keys.
-        quiet (bool): If True, suppress output to stdout.
-        progress (str): Progress display mode (none, simple, detailed).
+        quiet (bool): If True, suppress all stdout; errors still go to stderr.
+        progress (Optional[str]): Progress display mode. None resolves to 'simple'.
     """
+    # --quiet and --progress are mutually exclusive
+    if quiet and progress is not None:
+        raise click.UsageError("--quiet and --progress are mutually exclusive.")
+
+    # Resolve default
+    if progress is None:
+        progress = "simple"
+
+    # Validate fancy dependency early, before any S3 work
+    if progress == "fancy":
+        if importlib.util.find_spec("rich") is None:
+            raise click.UsageError(
+                "--progress fancy requires the 'fancy' extra. "
+                "Install it with: pip install s3fetch[fancy]"
+            )
+
     download_dir, bucket, prefix = prepare_download_dir_and_prefix(
         download_dir, s3_uri, delimiter
     )
@@ -469,12 +551,11 @@ def run_cli(  # noqa: C901
     )
     exit_event = utils.create_exit_event()
 
-    # Create progress tracker if progress is enabled
-    progress_tracker = None
-    if progress != "none":
+    # Progress tracker only needed for modes that show stats
+    progress_tracker: Optional[ProgressTracker] = None
+    if progress in ("detailed", "live-update", "fancy"):
         progress_tracker = ProgressTracker()
 
-    print(f"Starting to list objects from {s3_uri}", quiet)
     try:
         list_objects(
             client,
@@ -487,18 +568,21 @@ def run_cli(  # noqa: C901
             progress_tracker,
         )
         download_config = s3.create_download_config(callback=None)
-        if not quiet:
+
+        # Per-object key printing: simple and detailed only
+        if not quiet and progress in ("simple", "detailed"):
             api._create_completed_objects_thread(
                 queue=completed_queue,
                 func=utils.print_completed_objects,
             )
 
-        # Start progress monitoring for detailed mode
+        # Start background progress display thread where needed
         progress_thread = None
-        if progress == "detailed" and progress_tracker and not quiet:
+        if progress == "live-update" and progress_tracker:
             progress_thread = start_progress_monitoring(progress_tracker, exit_event)
+        elif progress == "fancy" and progress_tracker:
+            progress_thread = start_fancy_progress(progress_tracker, exit_event)
 
-        print("Starting to download objects", quiet)
         download_objects(
             client,
             threads,
@@ -514,15 +598,17 @@ def run_cli(  # noqa: C901
             progress_tracker,
         )
 
-        # Stop progress monitoring and print final summary
+        # Stop live/fancy display thread
         if progress_thread:
             exit_event.set()
             progress_thread.join(timeout=1)
-            print("", quiet)  # New line after progress updates
+            if progress == "live-update":
+                sys.stdout.write("\n")
+                sys.stdout.flush()
 
-        # Print final summary for both simple and detailed modes
-        if progress != "none" and progress_tracker and not quiet:
-            print_progress_summary(progress_tracker, quiet)
+        # Print final summary for detailed, live-update, and fancy
+        if progress in ("detailed", "live-update", "fancy") and progress_tracker:
+            print_progress_summary(progress_tracker, quiet=False)
 
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.", False)  # Always show, even with --quiet

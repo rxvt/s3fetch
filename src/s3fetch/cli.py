@@ -93,10 +93,11 @@ def validate_thread_count(threads: Optional[int]) -> None:
         if threads < 1:
             raise click.BadParameter(f"Thread count must be at least 1. Got: {threads}")
         if threads > 1000:
-            raise click.BadParameter(
-                f"Thread count must be 1000 or less. Got: {threads}\n"
-                "Using too many threads may overwhelm your system or hit AWS rate"
-                " limits."
+            click.echo(
+                f"Warning: Thread count {threads} exceeds 1000. "
+                "Using too many threads may overwhelm your system or hit AWS"
+                " rate limits.",
+                err=True,
             )
 
 
@@ -177,7 +178,7 @@ def validate_download_directory(download_dir: Optional[Path]) -> None:
     "-t",
     "--threads",
     type=int,
-    help="Number of concurrent download threads (1-1000). Defaults to CPU core count.",
+    help="Number of concurrent download threads (minimum 1). Defaults to CPU core count.",  # noqa: E501
 )
 @click.option(
     "--dry-run",

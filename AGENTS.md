@@ -54,6 +54,9 @@ s3fetch is a multi-threaded S3 download tool with these core components:
 - Dry-run mode for testing
 - Custom output formatting and progress indication
 - Standard boto3 AWS credentials support
+- Atomic downloads
+- Path traversal protection
+- Per-object completion callbacks
 
 ## CICD
 

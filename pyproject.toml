@@ -36,7 +36,7 @@ installer = "uv"
 python = "3.10"
 dependencies = [
   "pre-commit~=4.1.0",
-  "mypy",
+  "ty",
   "ruff~=0.13.1",
   "rich>=13.0.0",
 ]
@@ -81,15 +81,6 @@ source = ["s3fetch"]
 [tool.coverage.report]
 show_missing = true
 
-[tool.mypy]
-python_version = "3.10"
-ignore_missing_imports = true
-files = "src/s3fetch, tests"
-
-[[tool.mypy.overrides]]
-module = ["s3fetch", "pkg_resources"]
-ignore_missing_imports = true
-
 [tool.ruff]
 target-version = "py310"
 
@@ -132,6 +123,9 @@ convention = "google"
   "S101",   # Ignore use of 'assert'
 ]
 
-[tool.pyright]
-reportUnusedCallResult = false
-typeCheckingMode = "basic"
+[tool.ty.environment]
+python-version = "3.10"
+
+[tool.ty.analysis]
+# pytest and moto are only installed in the hatch-test environment, not the default dev env
+allowed-unresolved-imports = ["pytest", "moto", "moto.**", "pytest_mock", "_pytest.**"]

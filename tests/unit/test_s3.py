@@ -1,6 +1,7 @@
 import re
 import threading
 from pathlib import Path
+from typing import Any, cast
 from unittest.mock import patch
 
 import pytest
@@ -151,7 +152,7 @@ def test_listing_objects_with_invalid_access_key_id(s3_client):
             "records.",
         }
     }
-    client_error = ClientError(error_response, "ListObjectsV2")
+    client_error = ClientError(cast(Any, error_response), "ListObjectsV2")
 
     with patch.object(s3_client, "get_paginator") as mock_paginator:
         mock_paginator.side_effect = client_error
@@ -186,7 +187,7 @@ def test_listing_objects_with_signature_mismatch(s3_client):
             "signature you provided.",
         }
     }
-    client_error = ClientError(error_response, "ListObjectsV2")
+    client_error = ClientError(cast(Any, error_response), "ListObjectsV2")
 
     with patch.object(s3_client, "get_paginator") as mock_paginator:
         mock_paginator.side_effect = client_error
@@ -221,7 +222,7 @@ def test_listing_objects_with_token_refresh_required(s3_client):
             "Message": "The provided token must be refreshed.",
         }
     }
-    client_error = ClientError(error_response, "ListObjectsV2")
+    client_error = ClientError(cast(Any, error_response), "ListObjectsV2")
 
     with patch.object(s3_client, "get_paginator") as mock_paginator:
         mock_paginator.side_effect = client_error
@@ -251,7 +252,7 @@ def test_listing_objects_with_access_denied(s3_client):
 
     # Mock a ClientError with AccessDenied
     error_response = {"Error": {"Code": "AccessDenied", "Message": "Access Denied"}}
-    client_error = ClientError(error_response, "ListObjectsV2")
+    client_error = ClientError(cast(Any, error_response), "ListObjectsV2")
 
     with patch.object(s3_client, "get_paginator") as mock_paginator:
         mock_paginator.side_effect = client_error
@@ -286,7 +287,7 @@ def test_download_object_with_invalid_credentials(s3_client, tmp_path):
             "records.",
         }
     }
-    client_error = ClientError(error_response, "GetObject")
+    client_error = ClientError(cast(Any, error_response), "GetObject")
 
     with patch.object(s3_client, "download_file") as mock_download:
         mock_download.side_effect = client_error
@@ -323,7 +324,7 @@ def test_download_object_with_sso_token_expired(s3_client, tmp_path):
             "Message": "The provided token must be refreshed.",
         }
     }
-    client_error = ClientError(error_response, "GetObject")
+    client_error = ClientError(cast(Any, error_response), "GetObject")
 
     with patch.object(s3_client, "download_file") as mock_download:
         mock_download.side_effect = client_error
@@ -698,7 +699,7 @@ def test_download_object_no_temp_file_on_failure(tmp_path: Path, s3_client: S3Cl
     error_response = {
         "Error": {"Code": "SomeOtherError", "Message": "Something failed"}
     }
-    client_error = BotocoreClientError(error_response, "GetObject")
+    client_error = BotocoreClientError(cast(Any, error_response), "GetObject")
 
     with patch.object(s3_client, "download_file") as mock_download:
         mock_download.side_effect = client_error
@@ -888,7 +889,7 @@ def test_download_object_puts_download_result_on_failure(
     completed_queue: s3.S3FetchQueue[DownloadResult] = s3.S3FetchQueue()
 
     error_response = {"Error": {"Code": "SomeOtherError", "Message": "boom"}}
-    client_error = BotocoreClientError(error_response, "GetObject")
+    client_error = BotocoreClientError(cast(Any, error_response), "GetObject")
 
     with patch.object(s3_client, "download_file") as mock_download:
         mock_download.side_effect = client_error

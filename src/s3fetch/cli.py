@@ -362,7 +362,7 @@ def start_fancy_progress(
     Returns:
         The monitoring thread.
     """
-    from rich.progress import (  # type: ignore[import]
+    from rich.progress import (
         BarColumn,
         Progress,
         SpinnerColumn,

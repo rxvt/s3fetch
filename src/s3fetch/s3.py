@@ -19,7 +19,6 @@ from typing import (
     TypeVar,
 )
 
-import boto3
 from boto3.s3.transfer import TransferConfig
 from botocore.exceptions import ClientError
 from mypy_boto3_s3.client import S3Client
@@ -545,7 +544,7 @@ def split_object_key_into_dir_and_file(key: str, delimiter: str) -> Tuple[str, s
 def create_s3_transfer_config(
     use_threads: bool = True,
     max_concurrency: int = 10,
-) -> TransferConfig:  # type: ignore
+) -> TransferConfig:
     """Create a boto3.s3.transfer.TransferConfig object.
 
     Args:
@@ -556,7 +555,7 @@ def create_s3_transfer_config(
     Returns:
         boto3.s3.transfer.TransferConfig: TransferConfig object.
     """
-    s3transfer_config = boto3.s3.transfer.TransferConfig(  # type: ignore
+    s3transfer_config = TransferConfig(
         use_threads=use_threads,
         max_concurrency=max_concurrency,
     )

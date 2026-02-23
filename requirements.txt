@@ -4,6 +4,7 @@
 # - pre-commit~=4.1.0
 # - mypy
 # - ruff~=0.13.1
+# - rich>=13.0.0
 # - boto3==1.40.38
 # - boto3-stubs[s3]==1.40.38
 # - click==8.3.1
@@ -35,9 +36,13 @@ jmespath==1.1.0
     #   botocore
 librt==0.8.1
     # via mypy
+markdown-it-py==4.0.0
+    # via rich
+mdurl==0.1.2
+    # via markdown-it-py
 mypy==1.19.1
     # via hatch.envs.default
-mypy-boto3-s3==1.42.37
+mypy-boto3-s3==1.40.61
     # via boto3-stubs
 mypy-extensions==1.1.0
     # via mypy
@@ -47,15 +52,19 @@ pathspec==1.0.4
     # via mypy
 platformdirs==4.9.2
     # via virtualenv
-pre-commit==4.5.1
+pre-commit==4.1.0
     # via hatch.envs.default
+pygments==2.19.2
+    # via rich
 python-dateutil==2.9.0.post0
     # via botocore
 pyyaml==6.0.3
     # via pre-commit
-ruff==0.15.2
+rich==14.3.3
     # via hatch.envs.default
-s3transfer==0.16.0
+ruff==0.13.3
+    # via hatch.envs.default
+s3transfer==0.14.0
     # via boto3
 six==1.17.0
     # via python-dateutil
@@ -73,5 +82,5 @@ typing-extensions==4.15.0
     #   virtualenv
 urllib3==2.6.3
     # via botocore
-virtualenv==20.38.0
+virtualenv==20.39.0
     # via pre-commit

@@ -10,6 +10,7 @@
 # - pytest-xdist[psutil]~=3.5
 # - pytest-mock~=3.12.0
 # - moto[s3]<5.2.0,>=5.0.28
+# - rich>=13.0.0
 # - boto3==1.40.38
 # - boto3-stubs[s3]==1.40.38
 # - click==8.3.1
@@ -56,13 +57,17 @@ jmespath==1.1.0
     # via
     #   boto3
     #   botocore
+markdown-it-py==4.0.0
+    # via rich
 markupsafe==3.0.3
     # via
     #   jinja2
     #   werkzeug
+mdurl==0.1.2
+    # via markdown-it-py
 moto==5.1.21
     # via hatch.envs.hatch-test.py3.13
-mypy-boto3-s3==1.42.37
+mypy-boto3-s3==1.40.61
     # via boto3-stubs
 packaging==26.0
     # via
@@ -77,7 +82,9 @@ py-partiql-parser==0.6.3
 pycparser==3.0
     # via cffi
 pygments==2.19.2
-    # via pytest
+    # via
+    #   pytest
+    #   rich
 pytest==9.0.2
     # via
     #   hatch.envs.hatch-test.py3.13
@@ -85,11 +92,11 @@ pytest==9.0.2
     #   pytest-randomly
     #   pytest-rerunfailures
     #   pytest-xdist
-pytest-mock==3.15.1
+pytest-mock==3.12.0
     # via hatch.envs.hatch-test.py3.13
 pytest-randomly==3.16.0
     # via hatch.envs.hatch-test.py3.13
-pytest-rerunfailures==16.1
+pytest-rerunfailures==14.0
     # via hatch.envs.hatch-test.py3.13
 pytest-xdist==3.8.0
     # via hatch.envs.hatch-test.py3.13
@@ -107,7 +114,9 @@ requests==2.32.5
     #   responses
 responses==0.26.0
     # via moto
-s3transfer==0.16.0
+rich==14.3.3
+    # via hatch.envs.hatch-test.py3.13
+s3transfer==0.14.0
     # via boto3
 six==1.17.0
     # via python-dateutil

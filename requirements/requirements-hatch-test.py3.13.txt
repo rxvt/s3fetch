@@ -85,7 +85,7 @@ pytest==9.0.2
     #   pytest-randomly
     #   pytest-rerunfailures
     #   pytest-xdist
-pytest-mock==3.12.0
+pytest-mock==3.15.1
     # via hatch.envs.hatch-test.py3.13
 pytest-randomly==3.16.0
     # via hatch.envs.hatch-test.py3.13

@@ -19,7 +19,7 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "Topic :: Utilities",
 ]
-dependencies = ["boto3==1.40.38", "boto3-stubs[s3]==1.40.38", "click==8.3.0"]
+dependencies = ["boto3==1.40.38", "boto3-stubs[s3]==1.40.38", "click==8.3.1"]
 
 [project.optional-dependencies]
 fancy = ["rich>=13.0.0"]

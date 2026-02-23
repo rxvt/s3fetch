@@ -38,6 +38,8 @@ jobs:
 
       - name: Install Hatch
         uses: pypa/hatch@257e27e51a6a5616ed08a39a408a21c35c9931bc
+        with:
+          version: "1.16.3"
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:

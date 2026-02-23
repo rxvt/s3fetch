@@ -62,7 +62,7 @@ markupsafe==3.0.3
     #   werkzeug
 moto==5.1.21
     # via hatch.envs.hatch-test.py3.13
-mypy-boto3-s3==1.40.61
+mypy-boto3-s3==1.42.37
     # via boto3-stubs
 packaging==26.0
     # via

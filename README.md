@@ -28,9 +28,9 @@ Simple & fast multi-threaded S3 download tool.
 
 Source: [https://github.com/rxvt/s3fetch](https://github.com/rxvt/s3fetch)
 
-![Build and Publish](https://github.com/rxvt/s3fetch/workflows/Build%20and%20Publish/badge.svg?branch=main)
-![Test](https://github.com/rxvt/s3fetch/workflows/Test/badge.svg?branch=development)
-[![PyPI version](https://badge.fury.io/py/s3fetch.svg)](https://badge.fury.io/py/s3fetch)
+![Build and Publish](https://github.com/rxvt/s3fetch/actions/workflows/build-and-publish.yml/badge.svg?branch=main)
+![Test](https://github.com/rxvt/s3fetch/actions/workflows/test.yml/badge.svg?branch=main)
+[![PyPI version](https://img.shields.io/pypi/v/s3fetch)](https://pypi.org/project/s3fetch/)
 
 ## Features
 

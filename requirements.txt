@@ -37,7 +37,7 @@ librt==0.8.1
     # via mypy
 mypy==1.19.1
     # via hatch.envs.default
-mypy-boto3-s3==1.40.61
+mypy-boto3-s3==1.42.37
     # via boto3-stubs
 mypy-extensions==1.1.0
     # via mypy

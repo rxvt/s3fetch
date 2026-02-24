@@ -4,9 +4,6 @@
 - [S3Fetch](#s3fetch)
   - [Features](#features)
   - [Why use S3Fetch?](#why-use-s3fetch)
-  - [Benchmarks](#benchmarks)
-    - [With 100 threads](#with-100-threads)
-      - [With 8 threads](#with-8-threads)
   - [Installation](#installation)
     - [Requirements](#requirements)
     - [uv (recommended)](#uv-recommended)
@@ -48,39 +45,7 @@ Source: [https://github.com/rxvt/s3fetch](https://github.com/rxvt/s3fetch)
 
 Tools such as the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html) and [s4cmd](https://pypi.org/project/s4cmd/) are great and offer a lot of features, but S3Fetch out performs them when downloading a subset of objects from a large S3 bucket.
 
-Benchmarking shows (see below) that S3Fetch can finish downloading 428 objects from a bucket containing 12,204,097 objects in 8 seconds while other tools have not started downloading a single object after 60 minutes.
-
-## Benchmarks
-
-Downloading 428 objects under the `fake-prod-data/2020-10-17` prefix from a bucket containing a total of 12,204,097 objects.
-
-### With 100 threads
-
-```text
-s3fetch s3://fake-test-bucket/fake-prod-data/2020-10-17  --threads 100
-
-8.259 seconds
-```
-
-```text
-s4cmd get s3://fake-test-bucket/fake-prod-data/2020-10-17* --num-threads 100
-
-Timed out while listing objects after 60min.
-```
-
-#### With 8 threads
-
-```text
-s3fetch s3://fake-test-bucket/fake-prod-data/2020-10-17  --threads 8
-
-29.140 seconds
-```
-
-```text
-time s4cmd get s3://fake-test-bucket/fake-prod-data/2020-10-17* --num-threads 8
-
-Timed out while listing objects after 60min.
-```
+S3Fetch begins downloading objects immediately while listing is still in progress, so you never wait for a full bucket listing before the first byte lands on disk. This makes a dramatic difference when your prefix matches a small subset of a bucket containing millions of objects.
 
 ## Installation
 

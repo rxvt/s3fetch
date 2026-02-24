@@ -1,8 +1,8 @@
-# s3fetch — Developer Guide
+# S3Fetch — Developer Guide
 
 ## Overview
 
-s3fetch is a simple, fast, multi-threaded S3 download tool that also works as a Python library. Its core design advantage is that downloads begin immediately while listing is still in progress — making it dramatically faster than tools like `aws s3 cp` or `s4cmd` when downloading a subset of objects from a bucket containing millions of objects.
+S3Fetch is a simple, fast, multi-threaded S3 download tool that also works as a Python library. Its core design advantage is that downloads begin immediately while listing is still in progress — making it dramatically faster than tools like `aws s3 cp` or `s4cmd` when downloading a subset of objects from a bucket containing millions of objects.
 
 ---
 
@@ -106,7 +106,7 @@ User invokes cli() / download()
 
 ### Key Design: Streaming Start
 
-The listing thread and the download `ThreadPoolExecutor` run concurrently. Downloads begin as soon as the first key lands in the queue — there is no waiting for listing to complete. This is the fundamental performance advantage of s3fetch.
+The listing thread and the download `ThreadPoolExecutor` run concurrently. Downloads begin as soon as the first key lands in the queue — there is no waiting for listing to complete. This is the fundamental performance advantage of S3Fetch.
 
 ### Dual-Queue Architecture
 

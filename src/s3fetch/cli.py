@@ -396,6 +396,17 @@ def start_fancy_progress(
                     ),
                 )
                 time.sleep(0.5)
+            # Final update so the bar reaches 100% before the summary prints
+            stats = progress_tracker.get_stats()
+            rich_progress.update(
+                task,
+                completed=stats["objects_downloaded"],
+                total=stats["objects_found"] or None,
+                description=(
+                    f"Downloaded "
+                    f"[{stats['objects_downloaded']}/{stats['objects_found']}]"
+                ),
+            )
 
     progress_thread = threading.Thread(target=run_fancy, daemon=True)
     progress_thread.start()

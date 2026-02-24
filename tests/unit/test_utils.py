@@ -1,5 +1,10 @@
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 from s3fetch import utils
 from s3fetch.utils import ProgressProtocol, ProgressTracker
@@ -170,6 +175,13 @@ class TestProgressTracker:
         assert stats["objects_downloaded"] == 90  # 3 * 30
         assert stats["bytes_downloaded"] == 90000  # 3 * 30 * 1000
 
+    def test_get_stats_returns_elapsed_time(self):
+        """Elapsed time is a positive float."""
+        tracker = utils.ProgressTracker()
+        stats = tracker.get_stats()
+        assert isinstance(stats["elapsed_time"], float)
+        assert stats["elapsed_time"] >= 0
+
     def test_get_stats_during_operations(self):
         """Test that get_stats() works correctly during concurrent operations."""
         tracker = utils.ProgressTracker()
@@ -202,3 +214,102 @@ class TestProgressTracker:
             assert current["objects_downloaded"] >= previous["objects_downloaded"]
             assert current["bytes_downloaded"] >= previous["bytes_downloaded"]
             assert current["elapsed_time"] >= previous["elapsed_time"]
+
+
+class TestGetAvailableThreads:
+    """Tests for get_available_threads() covering all platform branches."""
+
+    def test_uses_sched_getaffinity_when_available(self):
+        """On platforms with sched_getaffinity, the affinity set size is returned."""
+        with patch.object(
+            os, "sched_getaffinity", return_value={0, 1, 2, 3}, create=True
+        ):
+            result = utils.get_available_threads()
+        assert result == 4
+
+    def test_falls_back_to_cpu_count_when_sched_getaffinity_raises(self):
+        """When sched_getaffinity raises, fall back to cpu_count."""
+
+        def bad_affinity(n: int) -> set:
+            raise OSError("not supported")
+
+        with patch.object(os, "sched_getaffinity", bad_affinity, create=True):
+            with patch.object(os, "cpu_count", return_value=8):
+                result = utils.get_available_threads()
+        assert result == 8
+
+    def test_falls_back_to_cpu_count_when_sched_getaffinity_absent(self):
+        """On platforms without sched_getaffinity, cpu_count is used."""
+        # Temporarily remove sched_getaffinity from os if present
+        original = getattr(os, "sched_getaffinity", None)
+        try:
+            if hasattr(os, "sched_getaffinity"):
+                delattr(os, "sched_getaffinity")
+            with patch.object(os, "cpu_count", return_value=6):
+                result = utils.get_available_threads()
+            assert result == 6
+        finally:
+            if original is not None:
+                os.sched_getaffinity = original  # type: ignore[attr-defined]
+
+    def test_defaults_to_1_when_cpu_count_returns_none(self):
+        """When cpu_count() returns None, the result defaults to 1."""
+        original = getattr(os, "sched_getaffinity", None)
+        try:
+            if hasattr(os, "sched_getaffinity"):
+                delattr(os, "sched_getaffinity")
+            with patch.object(os, "cpu_count", return_value=None):
+                result = utils.get_available_threads()
+            assert result == 1
+        finally:
+            if original is not None:
+                os.sched_getaffinity = original  # type: ignore[attr-defined]
+
+    def test_result_is_always_at_least_1(self):
+        """get_available_threads() never returns less than 1."""
+        result = utils.get_available_threads()
+        assert result >= 1
+
+
+class TestCustomPrint:
+    """Tests for custom_print()."""
+
+    def test_prints_message_when_not_quiet(self, capsys):
+        """When quiet=False, the message is printed to stdout."""
+        utils.custom_print("hello world", quiet=False)
+        captured = capsys.readouterr()
+        assert "hello world" in captured.out
+
+    def test_suppresses_output_when_quiet(self, capsys):
+        """When quiet=True, nothing is written to stdout."""
+        utils.custom_print("should be hidden", quiet=True)
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
+    def test_custom_end_character(self, capsys):
+        """The end= parameter controls the line terminator."""
+        utils.custom_print("no newline", quiet=False, end="")
+        captured = capsys.readouterr()
+        assert captured.out == "no newline"
+
+
+class TestSetDownloadDir:
+    """Tests for set_download_dir()."""
+
+    def test_none_returns_current_working_directory(self, tmp_path, monkeypatch):
+        """When download_dir is None, the cwd is used."""
+        monkeypatch.chdir(tmp_path)
+        result = utils.set_download_dir(None)
+        assert result == Path(os.getcwd())
+
+    def test_explicit_path_is_returned_unchanged(self, tmp_path):
+        """When an existing directory is given, it is returned as-is."""
+        result = utils.set_download_dir(tmp_path)
+        assert result == tmp_path
+
+    def test_nonexistent_path_raises(self, tmp_path):
+        """A non-existent directory raises DirectoryDoesNotExistError."""
+        from s3fetch.exceptions import DirectoryDoesNotExistError
+
+        with pytest.raises(DirectoryDoesNotExistError):
+            utils.set_download_dir(tmp_path / "does_not_exist")

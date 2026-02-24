@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from s3fetch import fs
@@ -69,3 +71,31 @@ def test_safe_paths_do_not_raise(tmp_path, object_dir):
     )
     assert result.is_dir()
     assert result.is_relative_to(tmp_path)
+
+
+def test_create_destination_directory_dry_run_does_not_create_dir(tmp_path):
+    """In dry_run mode no directory is created on disk."""
+    target = tmp_path / "sub" / "dir"
+    result = fs.create_destination_directory(
+        download_dir=tmp_path,
+        object_dir="sub/dir",
+        delimiter="/",
+        dry_run=True,
+    )
+    assert result == target
+    assert not target.exists()
+
+
+def test_check_download_dir_exists_raises_when_path_is_file(tmp_path):
+    """A path that exists but is a file raises DirectoryDoesNotExistError."""
+    file_path = tmp_path / "some_file.txt"
+    file_path.write_text("data")
+    with pytest.raises(DirectoryDoesNotExistError, match="not a directory"):
+        fs.check_download_dir_exists(file_path)
+
+
+def test_check_download_dir_exists_raises_on_permission_error(tmp_path):
+    """A directory that fails the os.access check raises PermissionError."""
+    with patch("s3fetch.fs.os.access", return_value=False):
+        with pytest.raises(PermissionError, match="Insufficient permissions"):
+            fs.check_download_dir_exists(tmp_path)

@@ -942,6 +942,67 @@ def test_download_result_dry_run_has_zero_file_size(
     completed_queue.close()
 
 
+def test_get_file_size_returns_zero_on_oserror(tmp_path: Path):
+    """_get_file_size returns 0 and logs a warning when stat() fails."""
+    missing = tmp_path / "ghost.txt"
+    # File does not exist, so stat() will raise OSError
+    result = s3._get_file_size(missing)
+    assert result == 0
+
+
+def test_raise_download_client_error_access_denied(tmp_path: Path):
+    """_raise_download_client_error raises PermissionError for AccessDenied."""
+    from botocore.exceptions import ClientError
+
+    error_response = {"Error": {"Code": "AccessDenied", "Message": "Access Denied"}}
+    client_error = ClientError(error_response, "GetObject")
+    dest = tmp_path / "file.txt"
+    with pytest.raises(PermissionError, match="Access denied during download"):
+        s3._raise_download_client_error(client_error, dest)
+
+
+def test_raise_download_client_error_unauthorized_operation(tmp_path: Path):
+    """_raise_download_client_error raises PermissionError for UnauthorizedOperation."""
+    from botocore.exceptions import ClientError
+
+    error_response = {
+        "Error": {"Code": "UnauthorizedOperation", "Message": "Not authorized"}
+    }
+    client_error = ClientError(error_response, "GetObject")
+    dest = tmp_path / "file.txt"
+    with pytest.raises(PermissionError, match="Access denied during download"):
+        s3._raise_download_client_error(client_error, dest)
+
+
+def test_download_object_permission_error_emits_result_and_raises(
+    tmp_path: Path, s3_client: S3Client
+):
+    """PermissionError during download emits DownloadResult(success=False) and re-raises."""  # noqa: E501
+    key = "perm_test_key"
+    dest_filename = tmp_path / key
+    bucket = "test_bucket"
+    completed_queue: s3.S3FetchQueue[DownloadResult] = s3.S3FetchQueue()
+
+    with patch.object(s3_client, "download_file") as mock_download:
+        mock_download.side_effect = PermissionError("read-only filesystem")
+        with pytest.raises(PermissionError, match="Permission error when attempting"):
+            s3.download_object(
+                key=key,
+                dest_filename=dest_filename,
+                client=s3_client,
+                bucket=bucket,
+                download_config={},
+                completed_queue=completed_queue,
+                dry_run=False,
+            )
+
+    result = completed_queue.get()
+    assert isinstance(result, DownloadResult)
+    assert result.success is False
+    assert result.key == key
+    completed_queue.close()
+
+
 def test_s3fetch_queue_generic_typing():
     """S3FetchQueue is generic and can hold any item type."""
     str_queue: s3.S3FetchQueue[str] = s3.S3FetchQueue()

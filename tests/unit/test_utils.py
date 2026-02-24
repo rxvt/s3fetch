@@ -226,6 +226,47 @@ def test_progress_tracker_get_stats_during_operations():
 
 
 # ---------------------------------------------------------------------------
+# format_bytes
+# ---------------------------------------------------------------------------
+
+
+def test_format_bytes_zero():
+    assert utils.format_bytes(0) == "0 B"
+
+
+def test_format_bytes_bytes():
+    assert utils.format_bytes(512) == "512 B"
+
+
+def test_format_bytes_boundary_below_kb():
+    assert utils.format_bytes(1023) == "1023 B"
+
+
+def test_format_bytes_kilobytes():
+    assert utils.format_bytes(1536) == "1.5 KB"
+
+
+def test_format_bytes_kilobytes_boundary():
+    assert utils.format_bytes(1024) == "1.0 KB"
+
+
+def test_format_bytes_megabytes():
+    assert utils.format_bytes(2 * 1024 * 1024) == "2.0 MB"
+
+
+def test_format_bytes_gigabytes():
+    assert utils.format_bytes(1.5 * 1024**3) == "1.5 GB"
+
+
+def test_format_bytes_with_speed_suffix():
+    assert utils.format_bytes(1024, suffix="/s") == "1.0 KB/s"
+
+
+def test_format_bytes_speed_megabytes():
+    assert utils.format_bytes(1024 * 1024, suffix="/s") == "1.0 MB/s"
+
+
+# ---------------------------------------------------------------------------
 # get_available_threads
 # ---------------------------------------------------------------------------
 

@@ -16,7 +16,7 @@ from mypy_boto3_s3.client import S3Client
 from . import api, aws, s3, utils
 from .exceptions import S3FetchError
 from .s3 import DownloadResult, S3FetchQueue
-from .utils import ProgressProtocol, ProgressTracker
+from .utils import ProgressProtocol, ProgressTracker, format_bytes
 from .utils import custom_print as print
 
 logger = logging.getLogger(__name__)
@@ -333,10 +333,11 @@ def start_progress_monitoring(
         """Overwrite a single status line with current progress every 2 seconds."""
         while not exit_event.is_set():
             stats = progress_tracker.get_stats()
+            speed = stats["bytes_downloaded"] / max(stats["elapsed_time"], 0.001)
             sys.stdout.write(
                 f"\r[Found: {stats['objects_found']} | "
                 f"Downloaded: {stats['objects_downloaded']} | "
-                f"Speed: {stats['download_speed_mbps']:.1f} MB/s]"
+                f"Speed: {format_bytes(speed, suffix='/s')}]"
             )
             sys.stdout.flush()
             time.sleep(2)
@@ -415,8 +416,9 @@ def print_progress_summary(progress_tracker: ProgressTracker, quiet: bool) -> No
     print("\nProgress Summary:", quiet)
     print(f"  Objects found: {stats['objects_found']}", quiet)
     print(f"  Objects downloaded: {stats['objects_downloaded']}", quiet)
-    print(f"  Total data: {stats['bytes_downloaded'] / (1024 * 1024):.1f} MB", quiet)
-    print(f"  Average speed: {stats['download_speed_mbps']:.1f} MB/s", quiet)
+    speed = stats["bytes_downloaded"] / max(stats["elapsed_time"], 0.001)
+    print(f"  Total data: {format_bytes(stats['bytes_downloaded'])}", quiet)
+    print(f"  Average speed: {format_bytes(speed, suffix='/s')}", quiet)
     print(f"  Total time: {stats['elapsed_time']:.1f} seconds", quiet)
 
 

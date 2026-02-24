@@ -105,6 +105,36 @@ class ProgressTracker:
         }
 
 
+def format_bytes(num_bytes: float, suffix: str = "") -> str:
+    """Format a byte count as a human-readable string with adaptive units.
+
+    Automatically selects B, KB, MB, or GB based on magnitude.
+
+    Args:
+        num_bytes: Number of bytes to format.
+        suffix: Optional suffix appended after the unit, e.g. ``"/s"`` for
+            speed values.
+
+    Returns:
+        Formatted string such as ``"4.5 KB"``, ``"12.3 MB/s"``, ``"512 B"``.
+
+    Examples:
+        >>> format_bytes(512)
+        '512 B'
+        >>> format_bytes(1536)
+        '1.5 KB'
+        >>> format_bytes(1048576, suffix="/s")
+        '1.0 MB/s'
+    """
+    if num_bytes < 1024:
+        return f"{int(num_bytes)} B{suffix}"
+    if num_bytes < 1024**2:
+        return f"{num_bytes / 1024:.1f} KB{suffix}"
+    if num_bytes < 1024**3:
+        return f"{num_bytes / 1024**2:.1f} MB{suffix}"
+    return f"{num_bytes / 1024**3:.1f} GB{suffix}"
+
+
 def set_download_dir(download_dir: Optional[Path]) -> Path:
     """Set the download directory.
 

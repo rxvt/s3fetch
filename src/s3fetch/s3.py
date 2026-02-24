@@ -518,10 +518,13 @@ def rollup_object_key_by_prefix(prefix: str, delimiter: str, key: str) -> str:
     if prefix == "":
         return key
 
-    # TODO: Can this be made simpler?
+    # Count how many delimiter-separated segments are in the prefix, then split
+    # the key by that many delimiters and take the tail.  This strips complete
+    # path segments rather than an arbitrary byte-for-byte prefix, so a prefix
+    # like "my/test/pre" (2 delimiters) correctly yields "prefix/file" from the
+    # key "my/test/prefix/file" rather than stripping mid-segment to "fix/file".
     delimiter_count = prefix.count(delimiter)
-    tmp_key = key.split(delimiter, maxsplit=delimiter_count)[-1]
-    return tmp_key
+    return key.split(delimiter, maxsplit=delimiter_count)[-1]
 
 
 def split_object_key_into_dir_and_file(key: str, delimiter: str) -> Tuple[str, str]:

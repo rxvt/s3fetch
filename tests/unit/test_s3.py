@@ -22,6 +22,11 @@ def test_create_download_queue():
     assert isinstance(queue, s3.S3FetchQueue)
 
 
+def test_get_queue_invalid_type_raises_value_error():
+    with pytest.raises(ValueError, match="queue_type must be"):
+        s3.get_queue("invalid")
+
+
 def test_queue_raises_exception_when_sentinel_value_found():
     queue = s3.get_queue("download")
     queue.close()

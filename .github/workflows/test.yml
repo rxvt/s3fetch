@@ -47,3 +47,42 @@ jobs:
           aws-region: us-east-1
       - name: Run tests
         run: hatch test
+
+  coverage:
+    name: Coverage (Python 3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache Hatch environments
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/hatch
+          key: hatch-${{ runner.os }}-py3.12-coverage-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            hatch-${{ runner.os }}-py3.12-coverage-
+            hatch-${{ runner.os }}-py3.12-
+
+      - name: Install Hatch
+        uses: pypa/hatch@257e27e51a6a5616ed08a39a408a21c35c9931bc
+        with:
+          version: "1.16.3"
+
+      - name: Run unit and integration tests with coverage
+        run: hatch test --python 3.12 --cover tests/unit tests/integration
+
+      - name: Generate HTML coverage report
+        run: hatch run coverage html --dir=htmlcov
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/
+          retention-days: 30

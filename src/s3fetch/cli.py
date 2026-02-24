@@ -500,7 +500,147 @@ def download_objects(
     )
 
 
-def run_cli(  # noqa: C901
+def _validate_progress_mode(quiet: bool, progress: Optional[str]) -> str:
+    """Validate progress/quiet combination and return the resolved progress mode.
+
+    Args:
+        quiet (bool): Whether --quiet was specified.
+        progress (Optional[str]): The --progress value, or None for the default.
+
+    Returns:
+        str: The resolved progress mode (defaults to 'simple').
+
+    Raises:
+        click.UsageError: If --quiet and --progress are both specified, or if
+            --progress fancy is requested but the 'rich' package is not installed.
+    """
+    if quiet and progress is not None:
+        raise click.UsageError("--quiet and --progress are mutually exclusive.")
+
+    if progress is None:
+        progress = "simple"
+
+    if progress == "fancy" and importlib.util.find_spec("rich") is None:
+        raise click.UsageError(
+            "--progress fancy requires the 'fancy' extra. "
+            "Install it with: pip install s3fetch[fancy]"
+        )
+
+    return progress
+
+
+def _setup_progress_display(
+    progress: str,
+    quiet: bool,
+    progress_tracker: Optional[ProgressTracker],
+    completed_queue: "S3FetchQueue[DownloadResult]",
+    exit_event: threading.Event,
+) -> Optional[threading.Thread]:
+    """Wire up per-object printing and any background progress display thread.
+
+    Args:
+        progress (str): The resolved progress mode.
+        quiet (bool): Whether --quiet was specified.
+        progress_tracker (Optional[ProgressTracker]): Tracker for stat-based modes.
+        completed_queue (S3FetchQueue[DownloadResult]): Queue of completed downloads.
+        exit_event (threading.Event): Event used to stop the background thread.
+
+    Returns:
+        Optional[threading.Thread]: The background progress thread, if one was started.
+    """
+    # Per-object key printing: simple and detailed modes only
+    if not quiet and progress in ("simple", "detailed"):
+        api._create_completed_objects_thread(
+            queue=completed_queue,
+            func=utils.print_completed_objects,
+        )
+
+    # Background display thread for live-update / fancy modes
+    if progress == "live-update" and progress_tracker:
+        return start_progress_monitoring(progress_tracker, exit_event)
+    if progress == "fancy" and progress_tracker:
+        return start_fancy_progress(progress_tracker, exit_event)
+    return None
+
+
+def _stop_progress_display(
+    progress: str,
+    progress_thread: Optional[threading.Thread],
+    exit_event: threading.Event,
+) -> None:
+    """Stop the background progress display thread and clean up its output.
+
+    Args:
+        progress (str): The resolved progress mode.
+        progress_thread (Optional[threading.Thread]): The background thread to stop.
+        exit_event (threading.Event): Event used to signal the thread to stop.
+    """
+    if progress_thread is None:
+        return
+    exit_event.set()
+    progress_thread.join(timeout=1)
+    if progress == "live-update":
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+
+
+def _handle_client_error(e: ClientError, s3_uri: str, region: str) -> None:
+    """Print a user-friendly message for a botocore ClientError and exit.
+
+    Args:
+        e (ClientError): The botocore ClientError to handle.
+        s3_uri (str): The S3 URI that was being accessed (used in error messages).
+        region (str): The AWS region (used in suggested commands).
+    """
+    error_code = e.response.get("Error", {}).get("Code", "Unknown")
+    if error_code == "NoSuchBucket":
+        bucket_uri = s3_uri.split("/")[0] + "//" + s3_uri.split("/")[2]
+        print(f"Error: S3 bucket does not exist: {s3_uri}", False)
+        print("Suggestions:", False)
+        print("  • Double-check the bucket name for typos", False)
+        print("  • Verify the bucket exists in the specified region", False)
+        print(f"  • Try: aws s3 ls {bucket_uri} --region {region}", False)
+    elif error_code == "AccessDenied":
+        print(f"Error: Access denied to S3 bucket: {s3_uri}", False)
+        print("Possible solutions:", False)
+        print("  • Check your AWS credentials: aws sts get-caller-identity", False)
+        print(
+            "  • Verify bucket permissions allow s3:ListBucket and s3:GetObject",
+            False,
+        )
+        print("  • Ensure you're using the correct AWS profile", False)
+    elif error_code == "InvalidAccessKeyId":
+        print("Error: Invalid AWS access key ID.", False)
+        print("Fix your credentials:", False)
+        print("  • Run: aws configure", False)
+        print(
+            "  • Or set environment variables: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY",  # noqa: E501
+            False,
+        )
+    elif error_code == "SignatureDoesNotMatch":
+        print("Error: Invalid AWS secret access key.", False)
+        print("Fix your credentials:", False)
+        print("  • Run: aws configure", False)
+        print("  • Verify your AWS_SECRET_ACCESS_KEY is correct", False)
+    elif error_code == "NoCredentialsError":
+        print("Error: No AWS credentials found.", False)
+        print("Set up credentials:", False)
+        print("  • Run: aws configure", False)
+        print("  • Or use IAM roles if running on EC2", False)
+        print(
+            "  • Or set environment variables: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY",  # noqa: E501
+            False,
+        )
+    else:
+        print(f"Error: AWS API error ({error_code}): {e}", False)
+        print("Troubleshooting steps:", False)
+        print("  • Check your internet connection", False)
+        print("  • Verify AWS region is correct", False)
+        print("  • Try again in a few moments", False)
+    sys.exit(1)
+
+
+def run_cli(
     s3_uri: str,
     region: str,
     debug: bool,
@@ -526,21 +666,7 @@ def run_cli(  # noqa: C901
         quiet (bool): If True, suppress all stdout; errors still go to stderr.
         progress (Optional[str]): Progress display mode. None resolves to 'simple'.
     """
-    # --quiet and --progress are mutually exclusive
-    if quiet and progress is not None:
-        raise click.UsageError("--quiet and --progress are mutually exclusive.")
-
-    # Resolve default
-    if progress is None:
-        progress = "simple"
-
-    # Validate fancy dependency early, before any S3 work
-    if progress == "fancy":
-        if importlib.util.find_spec("rich") is None:
-            raise click.UsageError(
-                "--progress fancy requires the 'fancy' extra. "
-                "Install it with: pip install s3fetch[fancy]"
-            )
+    progress = _validate_progress_mode(quiet, progress)
 
     download_dir, bucket, prefix = prepare_download_dir_and_prefix(
         download_dir, s3_uri, delimiter
@@ -569,19 +695,9 @@ def run_cli(  # noqa: C901
         )
         download_config = s3.create_download_config(callback=None)
 
-        # Per-object key printing: simple and detailed only
-        if not quiet and progress in ("simple", "detailed"):
-            api._create_completed_objects_thread(
-                queue=completed_queue,
-                func=utils.print_completed_objects,
-            )
-
-        # Start background progress display thread where needed
-        progress_thread = None
-        if progress == "live-update" and progress_tracker:
-            progress_thread = start_progress_monitoring(progress_tracker, exit_event)
-        elif progress == "fancy" and progress_tracker:
-            progress_thread = start_fancy_progress(progress_tracker, exit_event)
+        progress_thread = _setup_progress_display(
+            progress, quiet, progress_tracker, completed_queue, exit_event
+        )
 
         download_objects(
             client,
@@ -598,13 +714,7 @@ def run_cli(  # noqa: C901
             progress_tracker,
         )
 
-        # Stop live/fancy display thread
-        if progress_thread:
-            exit_event.set()
-            progress_thread.join(timeout=1)
-            if progress == "live-update":
-                sys.stdout.write("\n")
-                sys.stdout.flush()
+        _stop_progress_display(progress, progress_thread, exit_event)
 
         # Print final summary for detailed, live-update, and fancy
         if progress in ("detailed", "live-update", "fancy") and progress_tracker:
@@ -614,54 +724,7 @@ def run_cli(  # noqa: C901
         print("\nOperation cancelled by user.", False)  # Always show, even with --quiet
         sys.exit(1)
     except ClientError as e:
-        error_code = e.response.get("Error", {}).get("Code", "Unknown")
-        if error_code == "NoSuchBucket":
-            print(f"Error: S3 bucket does not exist: {s3_uri}", False)
-            print("Suggestions:", False)
-            print("  • Double-check the bucket name for typos", False)
-            print("  • Verify the bucket exists in the specified region", False)
-            print(
-                f"  • Try: aws s3 ls {s3_uri.split('/')[0] + '//' + s3_uri.split('/')[2]} --region {region}",  # noqa: E501
-                False,
-            )
-        elif error_code == "AccessDenied":
-            print(f"Error: Access denied to S3 bucket: {s3_uri}", False)
-            print("Possible solutions:", False)
-            print("  • Check your AWS credentials: aws sts get-caller-identity", False)
-            print(
-                "  • Verify bucket permissions allow s3:ListBucket and s3:GetObject",
-                False,
-            )
-            print("  • Ensure you're using the correct AWS profile", False)
-        elif error_code == "InvalidAccessKeyId":
-            print("Error: Invalid AWS access key ID.", False)
-            print("Fix your credentials:", False)
-            print("  • Run: aws configure", False)
-            print(
-                "  • Or set environment variables: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY",  # noqa: E501
-                False,
-            )
-        elif error_code == "SignatureDoesNotMatch":
-            print("Error: Invalid AWS secret access key.", False)
-            print("Fix your credentials:", False)
-            print("  • Run: aws configure", False)
-            print("  • Verify your AWS_SECRET_ACCESS_KEY is correct", False)
-        elif error_code == "NoCredentialsError":
-            print("Error: No AWS credentials found.", False)
-            print("Set up credentials:", False)
-            print("  • Run: aws configure", False)
-            print("  • Or use IAM roles if running on EC2", False)
-            print(
-                "  • Or set environment variables: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY",  # noqa: E501
-                False,
-            )
-        else:
-            print(f"Error: AWS API error ({error_code}): {e}", False)
-            print("Troubleshooting steps:", False)
-            print("  • Check your internet connection", False)
-            print("  • Verify AWS region is correct", False)
-            print("  • Try again in a few moments", False)
-        sys.exit(1)
+        _handle_client_error(e, s3_uri, region)
     except S3FetchError as e:
         if e.args and str(e.args[0]):
             print(f"Error: {e.args[0]}", False)

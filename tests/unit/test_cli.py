@@ -1,13 +1,19 @@
 import tempfile
+import threading
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from botocore.exceptions import ClientError
 from click import BadParameter
 from click.testing import CliRunner
 
 from s3fetch import __version__ as version
 from s3fetch.cli import (
+    _handle_client_error,
+    _setup_progress_display,
+    _stop_progress_display,
+    _validate_progress_mode,
     cli,
     validate_aws_region,
     validate_download_directory,
@@ -191,6 +197,271 @@ class TestValidateDownloadDirectory:
         with pytest.raises(BadParameter) as exc_info:
             validate_download_directory(mock_path)
         assert "Cannot access download directory" in str(exc_info.value)
+
+
+class TestValidateProgressMode:
+    """Test cases for _validate_progress_mode function."""
+
+    def test_quiet_and_progress_raises_usage_error(self):
+        """--quiet and --progress together raise a UsageError."""
+        import click
+
+        with pytest.raises(click.UsageError, match="mutually exclusive"):
+            _validate_progress_mode(quiet=True, progress="simple")
+
+    def test_none_progress_defaults_to_simple(self):
+        """None progress resolves to 'simple'."""
+        result = _validate_progress_mode(quiet=False, progress=None)
+        assert result == "simple"
+
+    def test_explicit_progress_is_returned_unchanged(self):
+        """An explicit progress mode is returned as-is."""
+        for mode in ("simple", "detailed", "live-update"):
+            assert _validate_progress_mode(quiet=False, progress=mode) == mode
+
+    def test_fancy_without_rich_raises_usage_error(self):
+        """--progress fancy without rich installed raises UsageError."""
+        import click
+
+        with patch("importlib.util.find_spec", return_value=None):
+            with pytest.raises(
+                click.UsageError, match="pip install s3fetch\\[fancy\\]"
+            ):
+                _validate_progress_mode(quiet=False, progress="fancy")
+
+    def test_fancy_with_rich_installed_returns_fancy(self):
+        """--progress fancy with rich available returns 'fancy'."""
+        with patch("importlib.util.find_spec", return_value=object()):
+            result = _validate_progress_mode(quiet=False, progress="fancy")
+        assert result == "fancy"
+
+    def test_quiet_without_progress_is_allowed(self):
+        """--quiet alone (no --progress) is valid and returns 'simple'."""
+        result = _validate_progress_mode(quiet=True, progress=None)
+        assert result == "simple"
+
+
+class TestSetupProgressDisplay:
+    """Test cases for _setup_progress_display function."""
+
+    def _make_queues_and_event(self) -> tuple:
+        from s3fetch.s3 import DownloadResult, S3FetchQueue
+
+        completed_queue: S3FetchQueue[DownloadResult] = S3FetchQueue()
+        exit_event = threading.Event()
+        return completed_queue, exit_event
+
+    def test_simple_mode_starts_completed_objects_thread(self):
+        """Simple mode wires up per-object printing and returns None."""
+        completed_queue, exit_event = self._make_queues_and_event()
+        with patch("s3fetch.cli.api._create_completed_objects_thread") as mock_thread:
+            result = _setup_progress_display(
+                progress="simple",
+                quiet=False,
+                progress_tracker=None,
+                completed_queue=completed_queue,
+                exit_event=exit_event,
+            )
+        mock_thread.assert_called_once()
+        assert result is None
+
+    def test_quiet_simple_mode_skips_per_object_printing(self):
+        """Quiet + simple mode does not start the per-object printing thread."""
+        completed_queue, exit_event = self._make_queues_and_event()
+        with patch("s3fetch.cli.api._create_completed_objects_thread") as mock_thread:
+            result = _setup_progress_display(
+                progress="simple",
+                quiet=True,
+                progress_tracker=None,
+                completed_queue=completed_queue,
+                exit_event=exit_event,
+            )
+        mock_thread.assert_not_called()
+        assert result is None
+
+    def test_live_update_mode_returns_thread(self):
+        """live-update mode starts a background monitoring thread."""
+        from s3fetch.utils import ProgressTracker
+
+        completed_queue, exit_event = self._make_queues_and_event()
+        tracker = ProgressTracker()
+        with patch("s3fetch.cli.start_progress_monitoring") as mock_monitor:
+            mock_monitor.return_value = MagicMock(spec=threading.Thread)
+            result = _setup_progress_display(
+                progress="live-update",
+                quiet=False,
+                progress_tracker=tracker,
+                completed_queue=completed_queue,
+                exit_event=exit_event,
+            )
+        mock_monitor.assert_called_once_with(tracker, exit_event)
+        assert result is mock_monitor.return_value
+
+    def test_fancy_mode_returns_thread(self):
+        """Fancy mode starts a background Rich progress thread."""
+        from s3fetch.utils import ProgressTracker
+
+        completed_queue, exit_event = self._make_queues_and_event()
+        tracker = ProgressTracker()
+        with patch("s3fetch.cli.start_fancy_progress") as mock_fancy:
+            mock_fancy.return_value = MagicMock(spec=threading.Thread)
+            result = _setup_progress_display(
+                progress="fancy",
+                quiet=False,
+                progress_tracker=tracker,
+                completed_queue=completed_queue,
+                exit_event=exit_event,
+            )
+        mock_fancy.assert_called_once_with(tracker, exit_event)
+        assert result is mock_fancy.return_value
+
+    def test_no_progress_thread_when_no_tracker(self):
+        """live-update with no tracker returns None (no background thread)."""
+        completed_queue, exit_event = self._make_queues_and_event()
+        with patch("s3fetch.cli.start_progress_monitoring") as mock_monitor:
+            result = _setup_progress_display(
+                progress="live-update",
+                quiet=False,
+                progress_tracker=None,
+                completed_queue=completed_queue,
+                exit_event=exit_event,
+            )
+        mock_monitor.assert_not_called()
+        assert result is None
+
+
+class TestStopProgressDisplay:
+    """Test cases for _stop_progress_display function."""
+
+    def test_none_thread_is_noop(self):
+        """Calling with no thread (None) does nothing."""
+        exit_event = threading.Event()
+        _stop_progress_display(
+            progress="simple", progress_thread=None, exit_event=exit_event
+        )
+        assert not exit_event.is_set()  # Exit event not touched
+
+    def test_sets_exit_event_and_joins_thread(self):
+        """A live background thread is joined and exit event is set."""
+        exit_event = threading.Event()
+        mock_thread = MagicMock(spec=threading.Thread)
+        _stop_progress_display(
+            progress="detailed", progress_thread=mock_thread, exit_event=exit_event
+        )
+        assert exit_event.is_set()
+        mock_thread.join.assert_called_once_with(timeout=1)
+
+    def test_live_update_writes_newline(self, capsys):
+        """live-update mode writes a trailing newline after stopping."""
+        exit_event = threading.Event()
+        mock_thread = MagicMock(spec=threading.Thread)
+        _stop_progress_display(
+            progress="live-update", progress_thread=mock_thread, exit_event=exit_event
+        )
+        captured = capsys.readouterr()
+        assert "\n" in captured.out
+
+    def test_fancy_mode_does_not_write_newline(self, capsys):
+        """Fancy mode does not write an extra newline after stopping."""
+        exit_event = threading.Event()
+        mock_thread = MagicMock(spec=threading.Thread)
+        _stop_progress_display(
+            progress="fancy", progress_thread=mock_thread, exit_event=exit_event
+        )
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
+
+def _make_client_error(code: str, message: str = "test error") -> ClientError:
+    """Build a botocore ClientError with the given error code."""
+    return ClientError(
+        {"Error": {"Code": code, "Message": message}},
+        "ListObjectsV2",
+    )
+
+
+class TestHandleClientError:
+    """Test cases for _handle_client_error function."""
+
+    def test_no_such_bucket(self, capsys):
+        """NoSuchBucket prints bucket-specific suggestions and exits."""
+        with pytest.raises(SystemExit) as exc_info:
+            _handle_client_error(
+                _make_client_error("NoSuchBucket"), "s3://my-bucket/", "us-east-1"
+            )
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "S3 bucket does not exist" in captured.out
+        assert "Double-check the bucket name" in captured.out
+
+    def test_no_such_bucket_includes_aws_cli_hint(self, capsys):
+        """NoSuchBucket includes an aws s3 ls suggestion with the bucket URI."""
+        with pytest.raises(SystemExit):
+            _handle_client_error(
+                _make_client_error("NoSuchBucket"),
+                "s3://my-bucket/prefix/",
+                "eu-west-1",
+            )
+        captured = capsys.readouterr()
+        assert "aws s3 ls s3://my-bucket" in captured.out
+        assert "--region eu-west-1" in captured.out
+
+    def test_access_denied(self, capsys):
+        """AccessDenied prints permission-related suggestions and exits."""
+        with pytest.raises(SystemExit) as exc_info:
+            _handle_client_error(
+                _make_client_error("AccessDenied"), "s3://my-bucket/", "us-east-1"
+            )
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "Access denied" in captured.out
+        assert "aws sts get-caller-identity" in captured.out
+
+    def test_invalid_access_key(self, capsys):
+        """InvalidAccessKeyId prints credential suggestions and exits."""
+        with pytest.raises(SystemExit) as exc_info:
+            _handle_client_error(
+                _make_client_error("InvalidAccessKeyId"), "s3://my-bucket/", "us-east-1"
+            )
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "Invalid AWS access key ID" in captured.out
+        assert "aws configure" in captured.out
+
+    def test_signature_does_not_match(self, capsys):
+        """SignatureDoesNotMatch prints secret key suggestions and exits."""
+        with pytest.raises(SystemExit) as exc_info:
+            _handle_client_error(
+                _make_client_error("SignatureDoesNotMatch"),
+                "s3://my-bucket/",
+                "us-east-1",
+            )
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "Invalid AWS secret access key" in captured.out
+
+    def test_no_credentials(self, capsys):
+        """NoCredentialsError prints setup instructions and exits."""
+        with pytest.raises(SystemExit) as exc_info:
+            _handle_client_error(
+                _make_client_error("NoCredentialsError"), "s3://my-bucket/", "us-east-1"
+            )
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "No AWS credentials found" in captured.out
+
+    def test_unknown_error_code(self, capsys):
+        """Unknown error codes print a generic troubleshooting message and exit."""
+        with pytest.raises(SystemExit) as exc_info:
+            _handle_client_error(
+                _make_client_error("InternalError", "something broke"),
+                "s3://my-bucket/",
+                "us-east-1",
+            )
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "AWS API error" in captured.out
+        assert "InternalError" in captured.out
 
 
 class TestCLIValidationIntegration:

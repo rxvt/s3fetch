@@ -135,9 +135,6 @@ dmypy.json
 
 .envrc
 
-# Contains AWS secrets
-.devcontainer/devcontainer.env
-
 # TODO
 TODO.md
 

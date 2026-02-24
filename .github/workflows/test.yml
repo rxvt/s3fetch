@@ -76,13 +76,3 @@ jobs:
 
       - name: Run unit and integration tests with coverage
         run: hatch test --python 3.12 --cover tests/unit tests/integration
-
-      - name: Generate HTML coverage report
-        run: hatch run coverage html --dir=htmlcov
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: htmlcov/
-          retention-days: 30

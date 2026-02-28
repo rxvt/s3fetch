@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - Unreleased
+## [2.0.0] - 2026-02-28
 
 ### ⚠️ BREAKING CHANGES
 
@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Python 3.14 support**: Added to test matrix and CI
 - **Atomic writes**: Downloads write to a temporary file first and rename on completion, preventing partial files on failure or interruption
 - **Path traversal protection**: Destination paths are validated against the download directory using `Path.is_relative_to()`
+- **Adaptive progress units**: Progress summary displays sizes in B/KB/MB/GB as appropriate
+- **Demo**: Animated GIF demo added to README
 - **Development Environment**: Full Hatch integration with locked dependencies via hatch-pip-compile
 - **Type Safety**: Comprehensive type annotations across all modules
 - **Code Quality**: Pre-commit hooks with Ruff, mypy, bandit, and formatting checks
@@ -48,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **`--progress detailed` live line**: The `\r` overwrite line was broken when per-object output was active; fixed by moving the live display to `live-update` mode which correctly suppresses per-object output
+- **`--progress fancy` completion**: Progress bar now reliably reaches 100% before the summary prints
+- **`on_complete` race condition**: Fixed a race condition in `download()` where the `on_complete` callback could be invoked after the function returned
 - **Logging Configuration**: Global logging setup no longer interferes with library usage
 - **Path traversal**: Fixed vulnerability where crafted S3 keys could write files outside the download directory
 - **Disk-full errors**: `OSError` during download now gives a clear error message instead of an unhandled exception

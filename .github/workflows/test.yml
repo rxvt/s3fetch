@@ -8,8 +8,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  id-token: write # This is required for requesting the JWT
-  contents: read # This is required for actions/checkout
+  contents: read
 jobs:
   test-matrix:
     name: Test Python ${{ matrix.python-version }}
@@ -40,13 +39,8 @@ jobs:
         uses: pypa/hatch@257e27e51a6a5616ed08a39a408a21c35c9931bc
         with:
           version: "1.16.3"
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: arn:aws:iam::408167012360:role/S3FetchGitHubActionsRole
-          aws-region: us-east-1
       - name: Run tests
-        run: hatch test
+        run: hatch test tests/unit tests/integration
 
   coverage:
     name: Coverage (Python 3.12)

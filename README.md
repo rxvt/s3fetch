@@ -2,6 +2,7 @@
 
 <!--toc:start-->
 - [S3Fetch](#s3fetch)
+  - [Demo](#demo)
   - [Features](#features)
   - [Why use S3Fetch?](#why-use-s3fetch)
   - [Installation](#installation)
@@ -28,6 +29,10 @@ Source: [https://github.com/rxvt/s3fetch](https://github.com/rxvt/s3fetch)
 ![Build and Publish](https://github.com/rxvt/s3fetch/actions/workflows/build-and-publish.yml/badge.svg?branch=main)
 ![Test](https://github.com/rxvt/s3fetch/actions/workflows/test.yml/badge.svg?branch=main)
 [![PyPI version](https://img.shields.io/pypi/v/s3fetch)](https://pypi.org/project/s3fetch/)
+
+## Demo
+
+![s3fetch demo](demo/demo.gif)
 
 ## Features
 

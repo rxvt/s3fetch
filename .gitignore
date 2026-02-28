@@ -155,3 +155,6 @@ plans/
 
 # uv lock file (dependency management handled by hatch-pip-compile)
 uv.lock
+
+# Generated asciinema recording
+demo/demo.cast

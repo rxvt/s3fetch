@@ -28,7 +28,7 @@ distlib==0.4.0
     # via virtualenv
 filelock==3.24.3
     # via virtualenv
-identify==2.6.16
+identify==2.6.17
     # via pre-commit
 jmespath==1.1.0
     # via

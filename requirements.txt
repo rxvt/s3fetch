@@ -82,5 +82,5 @@ typing-extensions==4.15.0
     #   virtualenv
 urllib3==2.6.3
     # via botocore
-virtualenv==20.39.0
+virtualenv==21.1.0
     # via pre-commit

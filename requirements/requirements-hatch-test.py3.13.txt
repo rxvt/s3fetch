@@ -120,7 +120,7 @@ s3transfer==0.16.0
     # via boto3
 six==1.17.0
     # via python-dateutil
-types-awscrt==0.31.2
+types-awscrt==0.31.3
     # via botocore-stubs
 types-s3transfer==0.16.0
     # via boto3-stubs

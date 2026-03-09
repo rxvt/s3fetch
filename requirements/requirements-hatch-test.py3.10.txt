@@ -126,7 +126,7 @@ tomli==2.4.0
     # via
     #   coverage
     #   pytest
-types-awscrt==0.31.2
+types-awscrt==0.31.3
     # via botocore-stubs
 types-s3transfer==0.16.0
     # via boto3-stubs

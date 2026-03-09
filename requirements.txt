@@ -62,7 +62,7 @@ pyyaml==6.0.3
     # via pre-commit
 rich==14.3.3
     # via hatch.envs.default
-ruff==0.15.4
+ruff==0.15.5
     # via hatch.envs.default
 s3transfer==0.16.0
     # via boto3

@@ -69,7 +69,6 @@ s3fetch is a multi-threaded S3 download tool with these core components:
 
 ## Important Notes
 
-- Uses hatch-pip-compile for dependency management with locked requirements
 - Pre-commit hooks are automatically installed in dev environment
 - Tests include unit, integration, and e2e categories
 - Always run a test after updating it

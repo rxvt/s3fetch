@@ -227,7 +227,6 @@ hatch test --cover
 ## Build System and Tooling
 
 - **Build backend:** [Hatch](https://hatch.pypa.io/) + hatchling
-- **Dependency locking:** [hatch-pip-compile](https://github.com/juftin/hatch-pip-compile)
 - **Minimum Python:** 3.10 (uses `X | Y` union syntax, `Path.is_relative_to()`, structural pattern matching)
 - **Python matrix:** 3.10, 3.11, 3.12, 3.13, 3.14
 

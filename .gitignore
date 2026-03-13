@@ -153,7 +153,7 @@ tmp
 # Agent plan files
 plans/
 
-# uv lock file (dependency management handled by hatch-pip-compile)
+# uv lock file
 uv.lock
 
 # Generated asciinema recording

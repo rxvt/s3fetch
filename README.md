@@ -83,7 +83,7 @@ For development work on S3Fetch:
 
 2. Install [hatch](https://hatch.pypa.io/) using [uv](https://docs.astral.sh/uv/):
    ```bash
-   uv tool install hatch --with hatch-pip-compile
+   uv tool install hatch
    ```
 
 3. Set up the development environment using Hatch:

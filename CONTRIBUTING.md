@@ -6,7 +6,7 @@
 1. Install [hatch](https://hatch.pypa.io/) using [uv](https://docs.astral.sh/uv/):
 
     ```bash
-    uv tool install hatch --with hatch-pip-compile
+    uv tool install hatch
     ```
 
 1. Create the development environment:

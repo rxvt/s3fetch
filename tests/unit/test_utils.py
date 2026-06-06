@@ -281,7 +281,7 @@ def test_get_available_threads_uses_sched_getaffinity():
 def test_get_available_threads_falls_back_when_sched_getaffinity_raises():
     """When sched_getaffinity raises, fall back to cpu_count."""
 
-    def bad_affinity(n: int) -> set:
+    def bad_affinity(_: int) -> set:
         raise OSError("not supported")
 
     with patch.object(os, "sched_getaffinity", bad_affinity, create=True):

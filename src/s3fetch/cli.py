@@ -241,7 +241,6 @@ def cli(
     run_cli(
         s3_uri=s3_uri,
         region=region,
-        debug=debug,
         download_dir=download_dir,
         regex=regex,
         threads=threads,
@@ -656,7 +655,6 @@ def _handle_client_error(e: ClientError, s3_uri: str, region: str) -> None:
 def run_cli(
     s3_uri: str,
     region: str,
-    debug: bool,
     download_dir: Path,
     regex: str,
     threads: int,
@@ -670,7 +668,6 @@ def run_cli(
     Args:
         s3_uri (str): The S3 URI to fetch from.
         region (str): AWS region for the S3 bucket.
-        debug (bool): Enable debug output if True.
         download_dir (Path): Directory to download files into.
         regex (str): Regex pattern to filter objects.
         threads (int): Number of threads to use for downloading.

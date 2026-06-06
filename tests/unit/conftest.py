@@ -17,7 +17,7 @@ def aws_credentials() -> None:
 
 
 @pytest.fixture()
-def s3_client(scope="package") -> Generator:  # noqa: ANN001
+def s3_client() -> Generator:
     """Return a mock S3Client object."""
     with mock_aws():
         client = boto3.client("s3", region_name="us-east-1")

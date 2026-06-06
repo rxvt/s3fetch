@@ -955,18 +955,17 @@ def test_get_file_size_returns_zero_on_oserror(tmp_path: Path):
     assert result == 0
 
 
-def test_raise_download_client_error_access_denied(tmp_path: Path):
+def test_raise_download_client_error_access_denied():
     """_raise_download_client_error raises PermissionError for AccessDenied."""
     from botocore.exceptions import ClientError
 
     error_response = {"Error": {"Code": "AccessDenied", "Message": "Access Denied"}}
     client_error = ClientError(error_response, "GetObject")
-    dest = tmp_path / "file.txt"
     with pytest.raises(PermissionError, match="Access denied during download"):
-        s3._raise_download_client_error(client_error, dest)
+        s3._raise_download_client_error(client_error)
 
 
-def test_raise_download_client_error_unauthorized_operation(tmp_path: Path):
+def test_raise_download_client_error_unauthorized_operation():
     """_raise_download_client_error raises PermissionError for UnauthorizedOperation."""
     from botocore.exceptions import ClientError
 
@@ -974,9 +973,8 @@ def test_raise_download_client_error_unauthorized_operation(tmp_path: Path):
         "Error": {"Code": "UnauthorizedOperation", "Message": "Not authorized"}
     }
     client_error = ClientError(error_response, "GetObject")
-    dest = tmp_path / "file.txt"
     with pytest.raises(PermissionError, match="Access denied during download"):
-        s3._raise_download_client_error(client_error, dest)
+        s3._raise_download_client_error(client_error)
 
 
 def test_download_object_permission_error_emits_result_and_raises(

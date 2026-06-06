@@ -605,12 +605,11 @@ def _get_file_size(path: Path) -> int:
         return 0
 
 
-def _raise_download_client_error(e: ClientError, dest_filename: Path) -> None:
+def _raise_download_client_error(e: ClientError) -> None:
     """Translate a ClientError from a download into a more specific exception.
 
     Args:
         e (ClientError): The ClientError to translate.
-        dest_filename (Path): The destination filename (used in error messages).
 
     Raises:
         InvalidCredentialsError: For credential-related errors.
@@ -682,7 +681,7 @@ def download_object(
         completed_queue.put(
             DownloadResult(key=key, dest_filename=dest_filename, success=False, error=e)
         )
-        _raise_download_client_error(e, dest_filename)
+        _raise_download_client_error(e)
     except PermissionError as e:
         tmp_filename.unlink(missing_ok=True)
         completed_queue.put(

@@ -290,32 +290,20 @@ def test_get_available_threads_falls_back_when_sched_getaffinity_raises():
     assert result == 8
 
 
-def test_get_available_threads_falls_back_when_sched_getaffinity_absent():
+def test_get_available_threads_falls_back_when_sched_getaffinity_absent(monkeypatch):
     """On platforms without sched_getaffinity, cpu_count is used."""
-    original = getattr(os, "sched_getaffinity", None)
-    try:
-        if hasattr(os, "sched_getaffinity"):
-            delattr(os, "sched_getaffinity")
-        with patch.object(os, "cpu_count", return_value=6):
-            result = utils.get_available_threads()
-        assert result == 6
-    finally:
-        if original is not None:
-            os.sched_getaffinity = original  # type: ignore[attr-defined]
+    monkeypatch.delattr(os, "sched_getaffinity", raising=False)
+    monkeypatch.setattr(os, "cpu_count", lambda: 6)
+    result = utils.get_available_threads()
+    assert result == 6
 
 
-def test_get_available_threads_defaults_to_1_when_cpu_count_none():
+def test_get_available_threads_defaults_to_1_when_cpu_count_none(monkeypatch):
     """When cpu_count() returns None, the result defaults to 1."""
-    original = getattr(os, "sched_getaffinity", None)
-    try:
-        if hasattr(os, "sched_getaffinity"):
-            delattr(os, "sched_getaffinity")
-        with patch.object(os, "cpu_count", return_value=None):
-            result = utils.get_available_threads()
-        assert result == 1
-    finally:
-        if original is not None:
-            os.sched_getaffinity = original  # type: ignore[attr-defined]
+    monkeypatch.delattr(os, "sched_getaffinity", raising=False)
+    monkeypatch.setattr(os, "cpu_count", lambda: None)
+    result = utils.get_available_threads()
+    assert result == 1
 
 
 def test_get_available_threads_always_at_least_1():

@@ -99,6 +99,7 @@ select = [
   # I Enable flake8-isort warnings
   # S Enable flake8-bandit warnings
   "ANN",
+  "ARG",
   "B",
   "B9",
   "C",

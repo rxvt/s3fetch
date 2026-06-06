@@ -6,7 +6,7 @@ import pytest
 from moto import mock_aws
 
 
-@pytest.fixture(scope="package", autouse=True)
+@pytest.fixture(autouse=True)
 def aws_credentials() -> None:
     """Mock AWS Credentials for Moto."""
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"

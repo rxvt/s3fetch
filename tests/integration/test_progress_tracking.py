@@ -19,7 +19,7 @@ from s3fetch.utils import ProgressTracker
 
 
 @mock_aws
-def test_progress_tracking_list_objects(tmpdir):
+def test_progress_tracking_list_objects():
     """Test that progress tracking correctly counts objects found during listing."""
     # Setup mock S3
     s3_client = boto3.client("s3", region_name="us-east-1")
@@ -125,7 +125,7 @@ def test_progress_tracking_downloads(tmpdir):
 
 
 @mock_aws
-def test_progress_tracking_with_regex_filtering(tmpdir):
+def test_progress_tracking_with_regex_filtering():
     """Test progress tracking with regex filtering."""
     # Setup mock S3
     s3_client = boto3.client("s3", region_name="us-east-1")

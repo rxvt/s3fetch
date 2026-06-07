@@ -131,3 +131,6 @@ convention = "google"
 [tool.pyright]
 reportUnusedCallResult = false
 typeCheckingMode = "basic"
+
+[tool.uv]
+exclude-newer = "1 week"

@@ -105,10 +105,10 @@ select = [
   "C",
   "D",
   "E",
-  "W",
   "F",
   "I",
   "S",
+  "W",
 ]
 ignore = [
   "ANN204", # Ignore return type annotation for special methods

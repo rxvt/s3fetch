@@ -56,6 +56,10 @@ format-check:
 # Run all quality checks (type check + lint + format check)
 check: lint format-check
 
+# Run pre-commit inside the env
+pre-commit:
+  hatch run pre-commit run
+
 # Cleanup
 clean:
     find . -type d -name "__pycache__" -delete

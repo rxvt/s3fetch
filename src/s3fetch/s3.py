@@ -3,19 +3,15 @@
 import logging
 import re
 import threading
+from collections.abc import Callable, Generator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from queue import Queue
+from re import Pattern
 from typing import (
     Any,
-    Callable,
-    Dict,
-    Generator,
     Generic,
-    Optional,
-    Pattern,
-    Tuple,
     TypeVar,
 )
 
@@ -66,7 +62,7 @@ class DownloadResult:
     dest_filename: Path
     success: bool
     file_size: int = 0
-    error: Optional[Exception] = field(default=None, repr=False)
+    error: Exception | None = field(default=None, repr=False)
 
 
 class S3FetchQueue(Generic[T]):
@@ -86,7 +82,7 @@ class S3FetchQueue(Generic[T]):
     """
 
     def __init__(self) -> None:  # noqa: D107
-        self.queue: Queue[Optional[T]] = Queue()
+        self.queue: Queue[T | None] = Queue()
 
     def put(self, item: T) -> None:
         """Add an item to the queue.
@@ -148,9 +144,9 @@ def create_list_objects_thread(
     client: S3Client,
     download_queue: "S3FetchQueue[str]",
     delimiter: str,
-    regex: Optional[str],
+    regex: str | None,
     exit_event: threading.Event,
-    progress_tracker: Optional[Any] = None,  # noqa: ANN401
+    progress_tracker: Any | None = None,  # noqa: ANN401
 ) -> threading.Thread:
     """Starts a seperate thread that lists of objects from the specified S3 bucket.
 
@@ -200,8 +196,8 @@ def create_download_threads(
     delimiter: str,
     download_config: dict,
     dry_run: bool = False,
-    progress_tracker: Optional[Any] = None,  # noqa: ANN401
-) -> Tuple[int, list]:
+    progress_tracker: Any | None = None,  # noqa: ANN401
+) -> tuple[int, list]:
     """Create download threads.
 
     Args:
@@ -256,7 +252,7 @@ def create_download_threads(
     return successful_downloads, failed_downloads
 
 
-def generate_stats(futures: dict) -> Tuple[int, list]:
+def generate_stats(futures: dict) -> tuple[int, list]:
     """Generate download statistics.
 
     Args:
@@ -283,9 +279,9 @@ def list_objects(
     bucket: str,
     prefix: str,
     delimiter: str,
-    regex: Optional[str],
+    regex: str | None,
     exit_event: threading.Event,
-    progress_tracker: Optional[Any] = None,  # noqa: ANN401
+    progress_tracker: Any | None = None,  # noqa: ANN401
 ) -> None:
     """List objects in an S3 bucket prefixed by `prefix`.
 
@@ -303,7 +299,7 @@ def list_objects(
         InvalidCredentialsError: Raised if AWS credentials are invalid.
         RegexError: Raised if the regex cannot be compiled.
     """
-    compiled_regex: Optional[Pattern] = None
+    compiled_regex: Pattern | None = None
     if regex:
         try:
             compiled_regex = re.compile(rf"{regex}")
@@ -375,7 +371,7 @@ def exit_requested(exit_event: threading.Event) -> bool:
     return False
 
 
-def exclude_object(key: str, delimiter: str, regex: Optional[Pattern]) -> bool:
+def exclude_object(key: str, delimiter: str, regex: Pattern | None) -> bool:
     """Determines if an S3 object should be added to the download queue.
 
     This is a wrapper for checking if the object key should be added to the download
@@ -436,7 +432,7 @@ def filter_by_regex(key: str, regex: Pattern) -> bool:
 def add_object_to_download_queue(
     key: str,
     queue: "S3FetchQueue[str]",
-    progress_tracker: Optional[Any] = None,  # noqa: ANN401
+    progress_tracker: Any | None = None,  # noqa: ANN401
 ) -> None:
     """Add S3 object to download queue.
 
@@ -473,7 +469,7 @@ def shutdown_download_threads(executor: ThreadPoolExecutor) -> None:
     executor.shutdown(wait=False)
 
 
-def process_key(key: str, delimiter: str, prefix: str) -> Tuple[str, str]:
+def process_key(key: str, delimiter: str, prefix: str) -> tuple[str, str]:
     """Process the object key.
 
     Rollup the object key to the nearest delimiter by the prefix and then split the
@@ -527,7 +523,7 @@ def rollup_object_key_by_prefix(prefix: str, delimiter: str, key: str) -> str:
     return key.split(delimiter, maxsplit=delimiter_count)[-1]
 
 
-def split_object_key_into_dir_and_file(key: str, delimiter: str) -> Tuple[str, str]:
+def split_object_key_into_dir_and_file(key: str, delimiter: str) -> tuple[str, str]:
     """Split the object key into directory and file.
 
     Args:
@@ -566,7 +562,7 @@ def create_s3_transfer_config(
     return s3transfer_config
 
 
-def create_download_config(callback: Optional[Callable] = None) -> Dict[str, Any]:
+def create_download_config(callback: Callable | None = None) -> dict[str, Any]:
     """Create a download configuration.
 
     Args:
@@ -575,7 +571,7 @@ def create_download_config(callback: Optional[Callable] = None) -> Dict[str, Any
     Returns:
         Dict[str, Any]: Download configuration.
     """
-    extra_kwargs: Dict[str, Any] = {}
+    extra_kwargs: dict[str, Any] = {}
 
     transfer_config = create_s3_transfer_config(
         use_threads=True,
@@ -641,7 +637,7 @@ def download_object(
     download_config: dict,
     completed_queue: "S3FetchQueue[DownloadResult]",
     dry_run: bool = False,
-    progress_tracker: Optional[Any] = None,  # noqa: ANN401
+    progress_tracker: Any | None = None,  # noqa: ANN401
 ) -> None:
     """Download an object from S3.
 
@@ -730,7 +726,7 @@ def download(
     download_config: dict,
     completed_queue: "S3FetchQueue[DownloadResult]",
     dry_run: bool = False,
-    progress_tracker: Optional[Any] = None,  # noqa: ANN401
+    progress_tracker: Any | None = None,  # noqa: ANN401
 ) -> None:
     """Download an object from S3.
 
@@ -793,7 +789,7 @@ def trim_schema_from_uri(uri: str) -> str:
     return uri.replace("s3://", "", 1)
 
 
-def split_uri_into_bucket_and_prefix(s3_uri: str, delimiter: str) -> Tuple[str, str]:
+def split_uri_into_bucket_and_prefix(s3_uri: str, delimiter: str) -> tuple[str, str]:
     """Parse and split the S3 URI into bucket and path prefix.
 
     :param s3_uri: S3 URI

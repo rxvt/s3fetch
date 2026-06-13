@@ -3,7 +3,6 @@
 import logging
 import os
 from pathlib import Path
-from typing import Optional
 
 from .exceptions import DirectoryDoesNotExistError, PathTraversalError
 
@@ -12,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 def create_destination_directory(
     download_dir: Path,
-    object_dir: Optional[str],
+    object_dir: str | None,
     delimiter: str,
     dry_run: bool = False,
 ) -> Path:

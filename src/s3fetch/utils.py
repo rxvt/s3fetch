@@ -5,7 +5,7 @@ import os
 import threading
 import time
 from pathlib import Path
-from typing import Dict, Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from . import fs
 from .exceptions import S3FetchQueueClosed
@@ -82,7 +82,7 @@ class ProgressTracker:
             self.objects_downloaded += 1
             self.bytes_downloaded += bytes_count
 
-    def get_stats(self) -> Dict[str, float]:
+    def get_stats(self) -> dict[str, float]:
         """Get current progress statistics.
 
         Returns:
@@ -135,7 +135,7 @@ def format_bytes(num_bytes: float, suffix: str = "") -> str:
     return f"{num_bytes / 1024**3:.1f} GB{suffix}"
 
 
-def set_download_dir(download_dir: Optional[Path]) -> Path:
+def set_download_dir(download_dir: Path | None) -> Path:
     """Set the download directory.
 
     Args:

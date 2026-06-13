@@ -218,8 +218,6 @@ def create_download_threads(
         Tuple[int, list]: Number of successful downloads and list of failed
             downloads as ``(key, exception)`` tuples.
     """
-    successful_downloads = 0
-    failed_downloads: list[str] = []
     with ThreadPoolExecutor(max_workers=threads) as executor:
         try:
             futures = {}

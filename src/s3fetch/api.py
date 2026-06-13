@@ -2,8 +2,9 @@
 
 import logging
 import threading
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any
 
 from mypy_boto3_s3.client import S3Client
 
@@ -16,17 +17,17 @@ logger = logging.getLogger(__name__)
 
 def download(
     s3_uri: str,
-    download_dir: Union[str, Path] = ".",
+    download_dir: str | Path = ".",
     *,
-    regex: Optional[str] = None,
-    threads: Optional[int] = None,
+    regex: str | None = None,
+    threads: int | None = None,
     region: str = "us-east-1",
     delimiter: str = "/",
     dry_run: bool = False,
-    client: Optional[S3Client] = None,
-    on_complete: Optional[Callable[[str], None]] = None,
-    progress_tracker: Optional[ProgressProtocol] = None,
-) -> Tuple[int, list]:
+    client: S3Client | None = None,
+    on_complete: Callable[[str], None] | None = None,
+    progress_tracker: ProgressProtocol | None = None,
+) -> tuple[int, list]:
     r"""Download objects from an S3 URI to a local directory.
 
     Args:
@@ -87,7 +88,7 @@ def download(
     exit_event = utils.create_exit_event()
     download_config = s3.create_download_config(callback=None)
 
-    on_complete_thread: Optional[threading.Thread] = None
+    on_complete_thread: threading.Thread | None = None
     if on_complete is not None:
 
         def _on_complete_consumer(queue: S3FetchQueue[DownloadResult]) -> None:
@@ -144,9 +145,9 @@ def _list_objects(
     client: S3Client,
     download_queue: "S3FetchQueue[str]",
     delimiter: str,
-    regex: Optional[str],
+    regex: str | None,
     exit_event: threading.Event,
-    progress_tracker: Optional[ProgressProtocol] = None,
+    progress_tracker: ProgressProtocol | None = None,
 ) -> None:
     """Start a background thread that lists objects from the specified S3 bucket.
 
@@ -185,12 +186,12 @@ def _download_objects(
     exit_event: threading.Event,
     bucket: str,
     prefix: str,
-    download_dir: Union[str, Path],
+    download_dir: str | Path,
     delimiter: str,
     download_config: dict,
     dry_run: bool = False,
-    progress_tracker: Optional[ProgressProtocol] = None,
-) -> Tuple[int, list]:
+    progress_tracker: ProgressProtocol | None = None,
+) -> tuple[int, list]:
     """Download objects from S3 bucket.
 
     Args:
@@ -238,7 +239,7 @@ def _download_objects(
 def create_completed_objects_thread(
     queue: "S3FetchQueue[DownloadResult]",
     func: Callable[..., None],
-    **kwargs: Dict[str, Any],
+    **kwargs: dict[str, Any],
 ) -> threading.Thread:
     """Create a thread to consume completed download results.
 

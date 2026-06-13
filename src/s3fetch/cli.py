@@ -411,7 +411,9 @@ def start_fancy_progress(
     return progress_thread
 
 
-def print_progress_summary(progress_tracker: ProgressTracker, quiet: bool) -> None:
+def print_progress_summary(
+    progress_tracker: ProgressTracker | None, quiet: bool
+) -> None:
     """Print final progress summary.
 
     Args:

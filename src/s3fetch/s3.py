@@ -544,7 +544,7 @@ def split_object_key_into_dir_and_file(key: str, delimiter: str) -> tuple[str, s
 def create_s3_transfer_config(
     use_threads: bool = True,
     max_concurrency: int = 10,
-) -> TransferConfig:  # type: ignore
+) -> TransferConfig:
     """Create a boto3.s3.transfer.TransferConfig object.
 
     Args:

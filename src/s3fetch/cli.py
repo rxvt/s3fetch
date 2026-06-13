@@ -7,7 +7,6 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Optional
 
 import click
 from botocore.exceptions import ClientError
@@ -61,7 +60,7 @@ def validate_s3_uri(s3_uri: str) -> None:
         )
 
 
-def validate_regex_pattern(regex: Optional[str]) -> None:
+def validate_regex_pattern(regex: str | None) -> None:
     """Validate that the regex pattern can be compiled.
 
     Args:
@@ -81,7 +80,7 @@ def validate_regex_pattern(regex: Optional[str]) -> None:
             ) from None
 
 
-def validate_thread_count(threads: Optional[int]) -> None:
+def validate_thread_count(threads: int | None) -> None:
     """Validate that the thread count is within reasonable bounds.
 
     Args:
@@ -122,7 +121,7 @@ def validate_aws_region(region: str) -> None:
         )
 
 
-def validate_download_directory(download_dir: Optional[Path]) -> None:
+def validate_download_directory(download_dir: Path | None) -> None:
     """Validate that the download directory exists and is accessible.
 
     Args:
@@ -440,7 +439,7 @@ def list_objects(
     delimiter: str,
     regex: str,
     exit_event: threading.Event,
-    progress_tracker: Optional[ProgressProtocol] = None,
+    progress_tracker: ProgressProtocol | None = None,
 ) -> None:
     """List objects in the S3 bucket and add them to the download queue.
 
@@ -478,7 +477,7 @@ def download_objects(
     delimiter: str,
     download_config: dict,
     dry_run: bool,
-    progress_tracker: Optional[ProgressProtocol] = None,
+    progress_tracker: ProgressProtocol | None = None,
 ) -> None:
     """Download objects from the S3 bucket using the provided configuration.
 
@@ -512,7 +511,7 @@ def download_objects(
     )
 
 
-def _validate_progress_mode(quiet: bool, progress: Optional[str]) -> str:
+def _validate_progress_mode(quiet: bool, progress: str | None) -> str:
     """Validate progress/quiet combination and return the resolved progress mode.
 
     Args:
@@ -544,10 +543,10 @@ def _validate_progress_mode(quiet: bool, progress: Optional[str]) -> str:
 def _setup_progress_display(
     progress: str,
     quiet: bool,
-    progress_tracker: Optional[ProgressTracker],
+    progress_tracker: ProgressTracker | None,
     completed_queue: "S3FetchQueue[DownloadResult]",
     exit_event: threading.Event,
-) -> Optional[threading.Thread]:
+) -> threading.Thread | None:
     """Wire up per-object printing and any background progress display thread.
 
     Args:
@@ -577,7 +576,7 @@ def _setup_progress_display(
 
 def _stop_progress_display(
     progress: str,
-    progress_thread: Optional[threading.Thread],
+    progress_thread: threading.Thread | None,
     exit_event: threading.Event,
 ) -> None:
     """Stop the background progress display thread and clean up its output.
@@ -661,7 +660,7 @@ def run_cli(
     dry_run: bool,
     delimiter: str,
     quiet: bool,
-    progress: Optional[str],
+    progress: str | None,
 ) -> None:
     """Run the main S3Fetch CLI logic.
 
@@ -688,7 +687,7 @@ def run_cli(
     exit_event = utils.create_exit_event()
 
     # Progress tracker only needed for modes that show stats
-    progress_tracker: Optional[ProgressTracker] = None
+    progress_tracker: ProgressTracker | None = None
     if progress in ("detailed", "live-update", "fancy"):
         progress_tracker = ProgressTracker()
 

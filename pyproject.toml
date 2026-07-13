@@ -30,7 +30,14 @@ General development environment.
 """
 installer = "uv"
 python = "3.10"
-dependencies = ["pre-commit~=4.5.0", "mypy", "ruff~=0.15.0", "rich>=13.0.0"]
+dependencies = [
+  "pre-commit~=4.5.0",
+  "mypy",
+  "ruff~=0.15.0",
+  "rich>=13.0.0",
+  "pytest-mock~=3.15.0",
+  "moto[s3]>=5.0.28,<5.2.0",
+]
 
 post-install-commands = ["hatch run pre-commit install"]
 

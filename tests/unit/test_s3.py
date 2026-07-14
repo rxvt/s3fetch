@@ -48,13 +48,13 @@ def test_not_excluding_non_directory_from_objects(delimiter: str):
     assert result is False
 
 
-@pytest.mark.parametrize("key,", ["my_test_file", "my_dir/my_test_file"])
+@pytest.mark.parametrize("key", ["my_test_file", "my_dir/my_test_file"])
 def test_skip_keys_containing_only_letters(key: str):
     result = s3.filter_by_regex(key=key, regex=re.compile(r"\d"))
     assert result is False
 
 
-@pytest.mark.parametrize("key,", ["my_test_file", "my_dir/my_test_file"])
+@pytest.mark.parametrize("key", ["my_test_file", "my_dir/my_test_file"])
 def test_include_keys_starting_with_my_(key: str):
     result = s3.filter_by_regex(key=key, regex=re.compile(r"^my_"))
     assert result is True

@@ -90,37 +90,6 @@ ignore_missing_imports = true
 [tool.ruff]
 target-version = "py310"
 
-[tool.ruff.lint]
-select = [
-  # ANN Enable flake8-annotations warnings
-  # B, B9 Enable flake8-bugbear. B9 is required for Bugbear’s more opinionated warnings.
-  # C Enable mccabe warnings
-  # D Enable flake8-docstring (pydocstyle) warnings
-  # E, W Enable pycodestyle warnings
-  # F Enable pyflakes warnings
-  # I Enable flake8-isort warnings
-  # S Enable flake8-bandit warnings
-  "ANN",
-  "ARG",
-  "B",
-  "B9",
-  "C",
-  "D",
-  "E",
-  "F",
-  "I",
-  "PERF",
-  "RUF",
-  "S",
-  "SIM",
-  "TCH",
-  "UP",
-  "W",
-]
-ignore = [
-  "ANN204", # Ignore return type annotation for special methods
-]
-
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 

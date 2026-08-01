@@ -101,6 +101,40 @@ def validate_thread_count(threads: int | None) -> None:
             )
 
 
+def resolve_concurrent_downloads(
+    threads: int | None, concurrent_downloads: int | None
+) -> int | None:
+    """Resolve the effective concurrent downloads value from the CLI options.
+
+    Handles the deprecated --threads option: errors if both options are given,
+    warns and maps the value across if only --threads is given.
+
+    Args:
+        threads (Optional[int]): The deprecated --threads value.
+        concurrent_downloads (Optional[int]): The --concurrent-downloads value.
+
+    Returns:
+        Optional[int]: The effective concurrent downloads value, or None if
+            neither option was given.
+
+    Raises:
+        click.UsageError: If both options are provided.
+    """
+    if threads is not None and concurrent_downloads is not None:
+        raise click.UsageError(
+            "cannot use --threads (deprecated) and --concurrent-downloads together."
+        )
+
+    if threads is not None:
+        click.echo(
+            "Warning: --threads is deprecated, use --concurrent-downloads instead.",
+            err=True,
+        )
+        concurrent_downloads = threads
+
+    return concurrent_downloads
+
+
 def validate_aws_region(region: str) -> None:
     """Validate that the AWS region follows expected format.
 
@@ -178,7 +212,13 @@ def validate_download_directory(download_dir: Path | None) -> None:
     "-t",
     "--threads",
     type=int,
-    help="Number of concurrent download threads (minimum 1). Defaults to CPU core count.",  # noqa: E501
+    help="Number of concurrent download threads (minimum 1). Defaults to CPU core count. DEPRECATED - please use --concurrent-downloads instead",  # noqa: E501
+)
+@click.option(
+    "-c",
+    "--concurrent-downloads",
+    type=int,
+    help="Number of objects to download concurrently (minimum 1). Defaults to CPU core count.",
 )
 @click.option(
     "--dry-run",
@@ -214,7 +254,8 @@ def cli(
     debug: bool,
     download_dir: Path,
     regex: str,
-    threads: int,
+    threads: int | None,
+    concurrent_downloads: int | None,
     dry_run: bool,
     delimiter: str,
     quiet: bool,
@@ -225,15 +266,17 @@ def cli(
     Examples:\n
       s3fetch s3://my-bucket/\n
       s3fetch s3://my-bucket/photos/ --regex ".*\\.jpg$"\n
-      s3fetch s3://my-bucket/data/ --dry-run --threads 10\n
+      s3fetch s3://my-bucket/data/ --dry-run --concurrent-downloads 10\n
     """  # noqa: D301
     # Configure logging for CLI usage
     setup_logging(debug)
 
+    concurrent_downloads = resolve_concurrent_downloads(threads, concurrent_downloads)
+
     # Validate all input parameters before proceeding
     validate_s3_uri(s3_uri)
     validate_regex_pattern(regex)
-    validate_thread_count(threads)
+    validate_thread_count(concurrent_downloads)
     validate_aws_region(region)
     validate_download_directory(download_dir)
 
@@ -242,7 +285,7 @@ def cli(
         region=region,
         download_dir=download_dir,
         regex=regex,
-        threads=threads,
+        concurrent_downloads=concurrent_downloads,
         dry_run=dry_run,
         delimiter=delimiter,
         quiet=quiet,
@@ -274,22 +317,23 @@ def prepare_download_dir_and_prefix(
     return download_dir, bucket, prefix
 
 
-def get_thread_and_pool_size(threads: int) -> tuple[int, int]:
+def get_thread_and_pool_size(concurrent_downloads: int | None) -> tuple[int, int]:
     """Determine thread count and connection pool size.
 
     Args:
-        threads (int): Number of threads to use for downloading.
+        concurrent_downloads (Optional[int]): Number of objects to download
+            concurrently. Defaults to CPU core count when None.
 
     Returns:
         tuple[int, int]: The thread count and connection pool size.
     """
-    if not threads:
-        threads = utils.get_available_threads()
+    if not concurrent_downloads:
+        concurrent_downloads = utils.get_available_threads()
     conn_pool_size = aws.calc_connection_pool_size(
-        threads,
+        concurrent_downloads,
         s3.DEFAULT_S3TRANSFER_CONCURRENCY,
     )
-    return threads, conn_pool_size
+    return concurrent_downloads, conn_pool_size
 
 
 def create_client_and_queues(
@@ -658,7 +702,7 @@ def run_cli(
     region: str,
     download_dir: Path,
     regex: str,
-    threads: int,
+    concurrent_downloads: int | None,
     dry_run: bool,
     delimiter: str,
     quiet: bool,
@@ -671,18 +715,19 @@ def run_cli(
         region (str): AWS region for the S3 bucket.
         download_dir (Path): Directory to download files into.
         regex (str): Regex pattern to filter objects.
-        threads (int): Number of threads to use for downloading.
+        concurrent_downloads (Optional[int]): Number of objects to download
+            concurrently. Defaults to CPU core count when None.
         dry_run (bool): If True, only list objects without downloading.
         delimiter (str): Delimiter for S3 object keys.
         quiet (bool): If True, suppress all stdout; errors still go to stderr.
-        progress (Optional[str]): Progress display mode. None resolves to 'simple'.
+        progress (str | None): Progress display mode. None resolves to 'simple'.
     """
     progress = _validate_progress_mode(quiet, progress)
 
     download_dir, bucket, prefix = prepare_download_dir_and_prefix(
         download_dir, s3_uri, delimiter
     )
-    threads, conn_pool_size = get_thread_and_pool_size(threads)
+    threads, conn_pool_size = get_thread_and_pool_size(concurrent_downloads)
     client, download_queue, completed_queue = create_client_and_queues(
         region, conn_pool_size
     )

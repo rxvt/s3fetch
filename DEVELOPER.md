@@ -49,7 +49,7 @@ CLI (cli.py)  ──►  API (api.py)  ──►  S3 (s3.py)  ──►  FS (fs.
 
 ### Component Responsibilities
 
-**`cli.py`** — Click-based entry point. Validates all user input (URI format, regex, thread count, region, download directory) before any S3 work begins. Manages the four progress display modes. `run_cli()` sets up queues, starts threads, and delegates to `api.py`.
+**`cli.py`** — Click-based entry point. Validates all user input (URI format, regex, concurrent download count, region, download directory) before any S3 work begins. Manages the four progress display modes. `run_cli()` sets up queues, starts threads, and delegates to `api.py`.
 
 **`api.py`** — The single public library entry point via `download()`. Wires together URI parsing, directory setup, thread count, boto3 client, queue creation, listing thread, download threads, and an optional per-object completion callback. Returns `(success_count, failures_list)`.
 
@@ -172,7 +172,7 @@ from s3fetch import download, DownloadResult, ProgressProtocol
 | S3 URI | positional | `s3_uri` | required | Must start with `s3://` |
 | Download dir | `--download-dir` | `download_dir` | CWD | Must exist; path traversal checked |
 | Regex filter | `-r/--regex` | `regex` | None | Applied via `re.search()` on each key |
-| Threads | `-t/--threads` | `threads` | CPU count | Min 1; warns if > 1000 |
+| Concurrent downloads | `-c/--concurrent-downloads` (`-t/--threads` deprecated) | `threads` | CPU count | Min 1; warns if > 1000 |
 | Region | `--region` | `region` | `us-east-1` | Ignored if custom `client` passed |
 | Delimiter | `--delimiter` | `delimiter` | `/` | S3 key hierarchy separator |
 | Dry run | `--dry-run/--list-only` | `dry_run` | False | Lists without downloading |

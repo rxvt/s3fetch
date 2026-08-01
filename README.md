@@ -119,7 +119,7 @@ Usage: s3fetch [OPTIONS] S3_URI
 
     s3fetch s3://my-bucket/photos/ --regex ".*\.jpg$"
 
-    s3fetch s3://my-bucket/data/ --dry-run --threads 10
+    s3fetch s3://my-bucket/data/ --dry-run --concurrent-downloads 10
 
 Options:
   --version                       Show the version and exit.
@@ -132,6 +132,11 @@ Options:
   -r, --regex TEXT                Filter objects using regular expressions
                                   (e.g., '.*\.jpg$' for JPEG files).
   -t, --threads INTEGER           Number of concurrent download threads
+                                  (minimum 1). Defaults to CPU core count.
+                                  DEPRECATED - please use --concurrent-
+                                  downloads instead
+  -c, --concurrent-downloads INTEGER
+                                  Number of objects to download concurrently
                                   (minimum 1, warns above 1000). Defaults to
                                   CPU core count.
   --dry-run, --list-only          Show what would be downloaded without
@@ -155,10 +160,10 @@ Options:
 
 ### Full example
 
-Download using 100 threads into `~/Downloads/tmp`, only downloading objects that end in `.dmg`.
+Download 100 objects concurrently into `~/Downloads/tmp`, only downloading objects that end in `.dmg`.
 
 ```text
-$ s3fetch s3://my-test-bucket --download-dir ~/Downloads/tmp/ --threads 100  --regex '\.dmg$'
+$ s3fetch s3://my-test-bucket --download-dir ~/Downloads/tmp/ --concurrent-downloads 100  --regex '\.dmg$'
 test-1.dmg...done
 test-2.dmg...done
 test-3.dmg...done
@@ -193,7 +198,7 @@ s3fetch s3://my-test-bucket/ --download-dir ~/Downloads
 Download 100 objects concurrently.
 
 ```text
-s3fetch s3://my-test-bucket/ --threads 100
+s3fetch s3://my-test-bucket/ --concurrent-downloads 100
 ```
 
 ### Filter objects using regular expressions

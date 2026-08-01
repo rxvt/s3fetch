@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from botocore.exceptions import ClientError
-from click import BadParameter
+from click import BadParameter, UsageError
 from click.testing import CliRunner
 
 from s3fetch import __version__ as version
@@ -15,6 +15,7 @@ from s3fetch.cli import (
     _stop_progress_display,
     _validate_progress_mode,
     cli,
+    resolve_concurrent_downloads,
     validate_aws_region,
     validate_download_directory,
     validate_regex_pattern,
@@ -128,6 +129,29 @@ class TestValidateThreadCount:
         assert "Warning" in captured.err
         assert "1001" in captured.err
         assert "AWS rate limits" in captured.err
+
+
+class TestResolveConcurrentDownloads:
+    """Test cases for resolve_concurrent_downloads function."""
+
+    def test_neither_option_returns_none(self):
+        """Neither option given resolves to None (CPU count default applies later)."""
+        assert resolve_concurrent_downloads(None, None) is None
+
+    def test_concurrent_downloads_returned_unchanged(self):
+        """--concurrent-downloads value passes through untouched."""
+        assert resolve_concurrent_downloads(None, 10) == 10
+
+    def test_threads_maps_to_concurrent_downloads_with_warning(self, capsys):
+        """Deprecated --threads value is mapped across and warns on stderr."""
+        assert resolve_concurrent_downloads(7, None) == 7
+        captured = capsys.readouterr()
+        assert "--threads is deprecated" in captured.err
+
+    def test_both_options_raises_usage_error(self):
+        """Providing both options raises UsageError."""
+        with pytest.raises(UsageError):
+            resolve_concurrent_downloads(5, 10)
 
 
 class TestValidateAwsRegion:
@@ -522,3 +546,67 @@ class TestCLIValidationIntegration:
             # would mean a Click option error, not a URI error).
             result = runner.invoke(cli, ["invalid-uri", "--progress", choice])
             assert "Invalid value for '--progress'" not in result.output
+
+
+class TestConcurrentDownloadsOption:
+    """Test the --concurrent-downloads option and deprecated --threads alias."""
+
+    def test_concurrent_downloads_passed_to_run_cli(self):
+        """--concurrent-downloads value is passed through to run_cli."""
+        runner = CliRunner()
+        with patch("s3fetch.cli.run_cli") as mock_run_cli:
+            result = runner.invoke(
+                cli, ["s3://test-bucket", "--concurrent-downloads", "10"]
+            )
+        assert result.exit_code == 0
+        assert mock_run_cli.call_args.kwargs["concurrent_downloads"] == 10
+
+    def test_concurrent_downloads_short_flag(self):
+        """-c short flag is equivalent to --concurrent-downloads."""
+        runner = CliRunner()
+        with patch("s3fetch.cli.run_cli") as mock_run_cli:
+            result = runner.invoke(cli, ["s3://test-bucket", "-c", "5"])
+        assert result.exit_code == 0
+        assert mock_run_cli.call_args.kwargs["concurrent_downloads"] == 5
+
+    def test_threads_maps_to_concurrent_downloads_with_warning(self):
+        """Deprecated --threads maps to concurrent_downloads and warns."""
+        runner = CliRunner()
+        with patch("s3fetch.cli.run_cli") as mock_run_cli:
+            result = runner.invoke(cli, ["s3://test-bucket", "--threads", "7"])
+        assert result.exit_code == 0
+        assert "--threads is deprecated" in result.output
+        assert mock_run_cli.call_args.kwargs["concurrent_downloads"] == 7
+
+    def test_threads_and_concurrent_downloads_together_error(self):
+        """Using both --threads and --concurrent-downloads is an error."""
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            ["s3://test-bucket", "--threads", "5", "--concurrent-downloads", "10"],
+        )
+        assert result.exit_code == 2
+        assert "cannot use --threads" in result.output
+
+    def test_concurrent_downloads_invalid_negative(self):
+        """--concurrent-downloads with a negative value shows proper error."""
+        runner = CliRunner()
+        result = runner.invoke(
+            cli, ["s3://test-bucket", "--concurrent-downloads", "-1"]
+        )
+        assert result.exit_code == 2
+        assert "Thread count must be at least 1" in result.output
+
+    def test_concurrent_downloads_invalid_zero(self):
+        """--concurrent-downloads 0 errors instead of silently using CPU count."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["s3://test-bucket", "--concurrent-downloads", "0"])
+        assert result.exit_code == 2
+        assert "Thread count must be at least 1" in result.output
+
+    def test_threads_zero_errors(self):
+        """--threads 0 errors (regression: 0 must not be treated as unset)."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["s3://test-bucket", "--threads", "0"])
+        assert result.exit_code == 2
+        assert "Thread count must be at least 1" in result.output

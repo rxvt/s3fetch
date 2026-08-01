@@ -61,15 +61,15 @@ def test_get_client_with_profile_not_found():
 def test_calc_connection_pool_size():
     """Test connection pool size calculation."""
     # Test with small values
-    result = aws.calc_connection_pool_size(threads=2, max_concurrency=5)
+    result = aws.calc_connection_pool_size(concurrent_downloads=2, max_concurrency=5)
     assert result == 10  # 2 * 5 = 10
 
     # Test with larger values that exceed MAX_POOL_CONNECTIONS
-    result = aws.calc_connection_pool_size(threads=20, max_concurrency=20)
+    result = aws.calc_connection_pool_size(concurrent_downloads=20, max_concurrency=20)
     assert result == 400  # 20 * 20 = 400
 
     # Test that it uses MAX_POOL_CONNECTIONS when that's larger
-    result = aws.calc_connection_pool_size(threads=1, max_concurrency=1)
+    result = aws.calc_connection_pool_size(concurrent_downloads=1, max_concurrency=1)
     from botocore.endpoint import MAX_POOL_CONNECTIONS
 
     assert result == MAX_POOL_CONNECTIONS  # Should use the default max

@@ -305,7 +305,7 @@ def test_multi_threaded_download_e2e(test_bucket, tmp_path):
             str(tmp_path),
             "--region",
             test_bucket["region"],
-            "--threads",
+            "--concurrent-downloads",
             "10",
             "--progress",
             "detailed",

@@ -13,11 +13,11 @@ from s3fetch.exceptions import InvalidCredentialsError
 logger = logging.getLogger(__name__)
 
 
-def calc_connection_pool_size(threads: int, max_concurrency: int) -> int:
+def calc_connection_pool_size(concurrent_downloads: int, max_concurrency: int) -> int:
     """Calculate the connection pool size.
 
     Args:
-        threads (int): Number of threads to use.
+        concurrent_downloads (int): Number of objects to download concurrently.
         max_concurrency (int): Maximum concurrency per thread.
 
     Returns:
@@ -29,7 +29,7 @@ def calc_connection_pool_size(threads: int, max_concurrency: int) -> int:
     # - the total possible concurrent S3 transfers (threads * max_concurrency)
     conn_pool_size = max(
         MAX_POOL_CONNECTIONS,
-        threads * max_concurrency,
+        concurrent_downloads * max_concurrency,
     )
     logger.debug(f"Setting urllib3 ConnectionPool(maxsize={conn_pool_size})")
     return conn_pool_size

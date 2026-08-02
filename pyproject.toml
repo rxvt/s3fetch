@@ -19,10 +19,10 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "Topic :: Utilities",
 ]
-dependencies = ["boto3>=1.28.0", "boto3-stubs[s3]>=1.28.0", "click>=8.1.0,<9"]
+dependencies = ["boto3~=1.28", "boto3-stubs[s3]~=1.28", "click~=8.1"]
 
 [project.optional-dependencies]
-fancy = ["rich>=13.0.0"]
+fancy = ["rich~=13.0"]
 
 [tool.hatch.envs.default]
 description = """
@@ -31,11 +31,11 @@ General development environment.
 installer = "uv"
 python = "3.10"
 dependencies = [
-  "pre-commit~=4.5.0",
+  "pre-commit~=4.5",
   "mypy",
-  "ruff~=0.15.0",
-  "rich>=13.0.0",
-  "pytest-mock~=3.15.0",
+  "ruff~=0.15",
+  "rich~=13.0",
+  "pytest-mock~=3.15",
   "moto[s3]>=5.0.28,<5.2.0",
 ]
 
@@ -45,9 +45,9 @@ post-install-commands = ["hatch run pre-commit install"]
 description = """Testing environment."""
 installer = "uv"
 extra-dependencies = [
-  "pytest-mock~=3.15.0",
+  "pytest-mock~=3.15",
   "moto[s3]>=5.0.28,<5.2.0",
-  "rich>=13.0.0",
+  "rich~=13.0",
 ]
 
 [[tool.hatch.envs.hatch-test.matrix]]

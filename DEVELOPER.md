@@ -252,7 +252,7 @@ just setup          # Install dev dependencies
 just lint           # Run ruff + mypy
 just lint-fix       # Auto-fix lint issues
 just format         # Run ruff formatter
-just check          # lint + tests
+just check          # lint + format check
 just clean          # Remove build artifacts
 ```
 
@@ -261,3 +261,30 @@ just clean          # Remove build artifacts
 - **`test.yml`** — Runs on push/PR across all 5 Python versions; assumes OIDC role for AWS access to the test bucket.
 - **`build-and-publish.yml`** — Triggered on GitHub release; builds wheel + sdist, verifies with `twine check`, publishes to PyPI via OIDC.
 - **`pre-commit.yml`** — Runs pre-commit hooks in CI.
+
+---
+
+## Releasing
+
+To publish a new release, run the release command with the desired version:
+
+```bash
+just release 2.2.0
+```
+
+Requirements:
+
+- [GitHub CLI (`gh`)](https://cli.github.com/) must be installed and authenticated.
+- The working tree must be clean.
+
+This recipe will:
+
+1. Bump `__version__` in `src/s3fetch/__init__.py` via `hatch version`.
+2. Run linting and formatting checks (`just check`).
+3. Run the full test suite across all supported Python versions (`just test -a`).
+4. Commit the version bump.
+5. Create an annotated Git tag (e.g. `v2.2.0`).
+6. Push the commit and tag.
+7. Create a GitHub release, which triggers `build-and-publish.yml` and publishes to PyPI.
+
+The publish workflows include a guard that fails the build if the release tag does not match `s3fetch.__version__`, preventing accidental mismatches.

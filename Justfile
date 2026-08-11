@@ -37,9 +37,10 @@ release version:
     gh release create "v{{version}}" --title "v{{version}}" --generate-notes
 
 # Testing
-# Run all tests
+# Run all tests (basetemp is kept on disk to avoid filling up small tmpfs mounts)
 test *args:
-    hatch test {{args}}
+    mkdir -p tmp/pytest
+    hatch test --basetemp=tmp/pytest {{args}}
 
 # Run unit tests only
 test-unit *args:
@@ -51,7 +52,8 @@ test-integration *args:
 
 # Run e2e tests only
 test-e2e *args:
-    hatch test {{args}} tests/e2e
+    mkdir -p tmp/pytest
+    hatch test --basetemp=tmp/pytest {{args}} tests/e2e
 
 # Run tests with coverage (excludes e2e tests which require AWS credentials)
 test-coverage *args:

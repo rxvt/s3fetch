@@ -12,7 +12,7 @@ import click
 from botocore.exceptions import ClientError
 from mypy_boto3_s3.client import S3Client
 
-from . import api, aws, s3, utils
+from . import __version__, api, aws, s3, utils
 from .exceptions import S3FetchError
 from .s3 import DownloadResult, S3FetchQueue
 from .utils import ProgressProtocol, ProgressTracker, format_bytes
@@ -185,8 +185,8 @@ def validate_download_directory(download_dir: Path | None) -> None:
             ) from None
 
 
+@click.version_option(version=__version__)
 @click.command(name="S3Fetch")
-@click.version_option()
 @click.argument("s3_uri", type=str)
 @click.option(
     "--region",

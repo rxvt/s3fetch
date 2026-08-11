@@ -3,6 +3,7 @@
 import tempfile
 from unittest.mock import patch
 
+import boto3
 from botocore.exceptions import ClientError
 from click.testing import CliRunner
 from moto import mock_aws
@@ -135,3 +136,22 @@ def test_cli_error_s3fetch_error_without_message():
 
     assert result.exit_code == 1
     assert "unexpected error" in result.output
+
+
+@mock_aws
+def test_cli_failed_downloads_reported_and_exit_nonzero():
+    """Failed object downloads are reported and cause a non-zero exit code."""
+    s3_client = boto3.client("s3", region_name="us-east-1")
+    s3_client.create_bucket(Bucket="test-bucket")
+    s3_client.put_object(Bucket="test-bucket", Key="file1.txt", Body="content")
+
+    failures = [("file1.txt", OSError("No space left on device"))]
+    runner = CliRunner()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with patch("s3fetch.cli.download_objects", return_value=(0, failures)):
+            result = runner.invoke(cli, ["s3://test-bucket/", "--download-dir", tmpdir])
+
+    assert result.exit_code == 1
+    assert "1 object(s) failed to download" in result.output
+    assert "file1.txt" in result.output
+    assert "No space left on device" in result.output

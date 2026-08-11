@@ -524,7 +524,7 @@ def download_objects(
     download_config: dict,
     dry_run: bool,
     progress_tracker: ProgressProtocol | None = None,
-) -> None:
+) -> tuple[int, list]:
     """Download objects from the S3 bucket using the provided configuration.
 
     Args:
@@ -540,8 +540,12 @@ def download_objects(
         download_config (dict): Download configuration.
         dry_run (bool): If True, only list objects without downloading.
         progress_tracker (Optional[ProgressProtocol]): Progress tracking instance.
+
+    Returns:
+        Tuple[int, list]: Number of successful downloads and list of failed
+            downloads as ``(key, exception)`` tuples.
     """
-    api._download_objects(
+    return api._download_objects(
         client=client,
         threads=threads,
         download_queue=download_queue,
@@ -755,7 +759,7 @@ def run_cli(
             progress, quiet, progress_tracker, completed_queue, exit_event
         )
 
-        download_objects(
+        success_count, failed_downloads = download_objects(
             client,
             threads,
             download_queue,
@@ -775,6 +779,15 @@ def run_cli(
         # Print final summary for detailed, live-update, and fancy
         if progress in ("detailed", "live-update", "fancy") and progress_tracker:
             print_progress_summary(progress_tracker, quiet=False)
+
+        if failed_downloads:
+            print(
+                f"Error: {len(failed_downloads)} object(s) failed to download:",
+                False,
+            )
+            for key, error in failed_downloads:
+                print(f"  {key}: {error}", False)
+            sys.exit(1)
 
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.", False)  # Always show, even with --quiet

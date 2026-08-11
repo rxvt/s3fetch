@@ -42,44 +42,44 @@ test *args:
     hatch test {{args}}
 
 # Run unit tests only
-test-unit:
-    hatch test tests/unit
+test-unit *args:
+    hatch test {{args}} tests/unit
 
 # Run integration tests only
-test-integration:
-    hatch test tests/integration
+test-integration *args:
+    hatch test {{args} tests/integration
 
 # Run e2e tests only
-test-e2e:
-    hatch test tests/e2e
+test-e2e *args:
+    hatch test {{args}} tests/e2e
 
 # Run tests with coverage (excludes e2e tests which require AWS credentials)
-test-coverage:
-    hatch test --cover -- tests/unit tests/integration
+test-coverage *args:
+    hatch test {{args}} --cover -- tests/unit tests/integration
 
 # Code Quality
 # Run linting with ruff
-lint:
-    hatch run ruff check
+lint *args:
+    hatch run ruff check {{args}}
 
 # Fix linting issues automatically
-lint-fix:
-    hatch run ruff check --fix
+lint-fix *args:
+    hatch run ruff check --fix {{args}}
 
 # Run formatting with ruff
-format:
-    hatch run ruff format
+format *args:
+    hatch run ruff format {{args}}
 
 # Check formatting without applying changes
-format-check:
-    hatch run ruff format --check
+format-check *args:
+    hatch run ruff format --check {{args}}
 
 # Run all quality checks (type check + lint + format check)
 check: lint format-check
 
 # Run pre-commit inside the env
-pre-commit:
-  hatch run pre-commit run
+pre-commit *args:
+  hatch run pre-commit run {{args}}
 
 # Cleanup
 clean:

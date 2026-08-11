@@ -26,9 +26,9 @@ release version:
         exit 1
     fi
 
-    hatch version {{version}}
     just check
     just test -a
+    hatch version {{version}}
     git add src/s3fetch/__init__.py
     git commit -m "Bump version to {{version}}"
     git tag -a "v{{version}}" -m "Release v{{version}}"

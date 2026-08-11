@@ -47,7 +47,7 @@ test-unit *args:
 
 # Run integration tests only
 test-integration *args:
-    hatch test {{args} tests/integration
+    hatch test {{args}} tests/integration
 
 # Run e2e tests only
 test-e2e *args:

@@ -486,7 +486,7 @@ def list_objects(
     regex: str,
     exit_event: threading.Event,
     progress_tracker: ProgressProtocol | None = None,
-) -> None:
+) -> threading.Thread:
     """List objects in the S3 bucket and add them to the download queue.
 
     Args:
@@ -498,8 +498,13 @@ def list_objects(
         regex (str): Regex pattern to filter objects.
         exit_event (threading.Event): Event to signal exit.
         progress_tracker (Optional[ProgressProtocol]): Progress tracking instance.
+
+    Returns:
+        threading.Thread: The started listing thread. Callers should join it
+            (after setting ``exit_event``) before exiting to avoid orphaning
+            the thread on early-exit paths.
     """
-    api._list_objects(
+    return api._list_objects(
         client=client,
         download_queue=download_queue,
         bucket=bucket,
@@ -742,8 +747,9 @@ def run_cli(
     if progress in ("detailed", "live-update", "fancy"):
         progress_tracker = ProgressTracker()
 
+    list_thread: threading.Thread | None = None
     try:
-        list_objects(
+        list_thread = list_objects(
             client,
             download_queue,
             bucket,
@@ -800,3 +806,10 @@ def run_cli(
         else:
             print("Error: An unexpected error occurred during S3 operation.", False)
         sys.exit(1)
+    finally:
+        # Stop and reap the listing thread so it is never orphaned, even on
+        # early-exit paths above. The listing loop checks exit_event between
+        # objects and shuts itself down silently via SystemExit.
+        exit_event.set()
+        if list_thread is not None:
+            list_thread.join()

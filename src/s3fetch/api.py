@@ -148,7 +148,7 @@ def _list_objects(
     regex: str | None,
     exit_event: threading.Event,
     progress_tracker: ProgressProtocol | None = None,
-) -> None:
+) -> threading.Thread:
     """Start a background thread that lists objects from the specified S3 bucket.
 
     Starts a separate thread that lists objects from the specified S3 bucket
@@ -164,6 +164,11 @@ def _list_objects(
         regex (Optional[str]): Regular expression to use for filtering objects.
         exit_event (threading.Event): Notify that script to exit.
         progress_tracker (Optional[ProgressProtocol]): Progress tracker instance.
+
+    Returns:
+        threading.Thread: The started listing thread. Callers should join it
+            (after setting ``exit_event``) before exiting to avoid orphaning
+            the thread on early-exit paths.
     """
     list_objects_thread = s3.create_list_objects_thread(
         bucket=bucket,
@@ -176,6 +181,7 @@ def _list_objects(
         progress_tracker=progress_tracker,
     )
     list_objects_thread.start()
+    return list_objects_thread
 
 
 def _download_objects(

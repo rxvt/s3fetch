@@ -16,25 +16,11 @@ run *args:
     hatch run s3fetch {{args}}
 
 # Release
-# Bump version, run full test suite, commit, tag, push, and create GitHub release
+# Bump version, run full test suite, commit, tag, push, and create GitHub release.
+# To skip the expensive check/test phase (e.g. after a transient failure):
+#   SKIP_TESTS=1 just release {{version}}
 release version:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    if [ -n "$(git status --porcelain)" ]; then
-        echo "Working tree is not clean. Commit or stash changes before releasing."
-        exit 1
-    fi
-
-    just check
-    just test -a
-    hatch version {{version}}
-    git add src/s3fetch/__init__.py
-    git commit -m "Bump version to {{version}}"
-    git tag -a "v{{version}}" -m "Release v{{version}}"
-    git push origin HEAD
-    git push origin "v{{version}}"
-    gh release create "v{{version}}" --title "v{{version}}" --generate-notes
+    ./scripts/release.sh {{version}}
 
 # Testing
 # Run all tests (basetemp is kept on disk to avoid filling up small tmpfs mounts)
